@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/badge/macOS-11%20Big%20Sur%2B-black?logo=apple" alt="macOS 11+">
   <img src="https://img.shields.io/badge/Swift-5-F05138?logo=swift&logoColor=white" alt="Swift 5">
   <img src="https://img.shields.io/badge/Intel%20%2B%20Apple%20Silicon-universal-555" alt="Universal">
+  <img src="https://img.shields.io/badge/licenza-Unlicense%20(pubblico%20dominio)-blue" alt="Unlicense">
 </p>
 
 ---
@@ -124,7 +125,7 @@ AudioMac/                 App (SwiftUI, macOS 11+)
 ├── LoopbackDriver.swift  Installazione del driver e instradamento multi-uscita
 └── SourceCatalog.swift   Elenco di schermi e finestre
 AudioMacDriver/           Driver AudioServerPlugIn "AudioMac Loopback" (C)
-icon/                     Sorgenti e esportazioni dell'icona
+icon/                     Sorgente Affinity ed esportazioni dell'icona (l'app usa AudioMac/Assets.xcassets)
 ```
 
 ## Limiti noti
@@ -134,3 +135,8 @@ icon/                     Sorgenti e esportazioni dell'icona
 - Il driver supporta 44,1 e 48 kHz: se l'uscita audio del Mac lavora a una frequenza diversa, il dispositivo
   multi-uscita potrebbe non funzionare.
 - Audio del Mac e microfono sono su due tracce separate: QuickTime e i programmi di montaggio le leggono entrambe.
+
+## Licenza
+
+Pubblico dominio ([The Unlicense](LICENSE)): puoi usare, copiare, modificare, distribuire e vendere AudioMac,
+anche in progetti commerciali e chiusi, senza chiedere permesso e senza obbligo di citare la fonte.
