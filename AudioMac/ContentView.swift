@@ -68,6 +68,18 @@ struct ContentView: View {
                     Text("60 fps").tag(60)
                 }
             }
+
+            HStack {
+                Text("Save to:")
+                Image(systemName: "folder")
+                    .foregroundColor(.secondary)
+                Text(recorder.outputFolder.abbreviatingWithTildeInPath)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .help(recorder.outputFolder.path)
+                Spacer(minLength: 8)
+                Button("Choose…", action: recorder.chooseOutputFolder)
+            }
         }
     }
 
@@ -148,6 +160,10 @@ struct ContentView: View {
             }
         }
     }
+}
+
+private extension URL {
+    var abbreviatingWithTildeInPath: String { (path as NSString).abbreviatingWithTildeInPath }
 }
 
 /// Row with a mute button and a level meter. The meter always shows the incoming signal,

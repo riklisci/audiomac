@@ -30,7 +30,7 @@ AudioMac does it for you, in a minimal app:
 - 🔊 **Mac audio** and 🎙️ **microphone**, on two separate tracks in the same file
 - 🔇 **Live mute** for each source, even while recording, without losing sync
 - 📊 **Audio level meters** for both inputs, always visible, even before you start recording
-- 🎞️ **H.264 or HEVC**, 30 or 60 fps, `.mov` files saved to `~/Movies`
+- 🎞️ **H.264 or HEVC**, 30 or 60 fps, `.mov` files saved to `~/Movies` by default, or to any folder you choose
 - ⌨️ **⇧⌘R** to start/stop
 
 ## Compatibility

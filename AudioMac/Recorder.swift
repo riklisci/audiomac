@@ -74,6 +74,7 @@ final class Recorder: ObservableObject {
     @Published private(set) var elapsed: TimeInterval = 0
     @Published private(set) var status = "Ready"
     @Published private(set) var lastFile: URL?
+    @Published private(set) var outputFolder: URL = Recorder.storedOutputFolder()
 
     let levels = Levels()
     private let engine = CaptureEngine()
@@ -241,6 +242,12 @@ final class Recorder: ObservableObject {
             target = .window(window)
         }
 
+        var isFolder: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: outputFolder.path, isDirectory: &isFolder), isFolder.boolValue else {
+            status = "The save folder \"\(outputFolder.lastPathComponent)\" no longer exists: choose another one."
+            return
+        }
+
         let size = target.videoSize
         let source = makeVideoSource(target: target, fps: fps, legacy: Self.usesLegacyVideo)
         source.onError = { [weak self] error in
@@ -248,7 +255,7 @@ final class Recorder: ObservableObject {
         }
 
         do {
-            try engine.prepare(url: Self.makeOutputURL(), width: size.width, height: size.height,
+            try engine.prepare(url: makeOutputURL(), width: size.width, height: size.height,
                                codec: codec.avCodec, fps: fps, includeMic: micInput != nil)
             try await source.start(engine: engine)
         } catch {
@@ -314,6 +321,20 @@ final class Recorder: ObservableObject {
         OutputRouter.shared.restore()
     }
 
+    func chooseOutputFolder() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose where to save recordings"
+        panel.prompt = "Choose"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = outputFolder
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        outputFolder = url
+        UserDefaults.standard.set(url.path, forKey: Self.outputFolderKey)
+    }
+
     func revealLastFile() {
         guard let lastFile else { return }
         NSWorkspace.shared.activateFileViewerSelecting([lastFile])
@@ -339,10 +360,20 @@ final class Recorder: ObservableObject {
         return max(db, current - 1.5, Levels.floor)
     }
 
-    private static func makeOutputURL() -> URL {
-        let dir = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
+    private static let outputFolderKey = "OutputFolder"
+
+    private static var defaultOutputFolder: URL {
+        FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
+    }
+
+    private static func storedOutputFolder() -> URL {
+        guard let path = UserDefaults.standard.string(forKey: outputFolderKey) else { return defaultOutputFolder }
+        return URL(fileURLWithPath: path, isDirectory: true)
+    }
+
+    private func makeOutputURL() -> URL {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
-        return dir.appendingPathComponent("AudioMac \(formatter.string(from: Date())).mov")
+        return outputFolder.appendingPathComponent("AudioMac \(formatter.string(from: Date())).mov")
     }
 }
