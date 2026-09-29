@@ -1,0 +1,46 @@
+---
+triple:          'x86_64-apple-darwin'
+binary-path:     '/Users/rikdev/Projects/audiomac/build/Release/AudioMacLoopback.driver/Contents/MacOS/AudioMacLoopback'
+relocations:
+  - { offset: 0x63A90, size: 0x8, addend: 0x0, symName: _AudioMac_Create, symObjAddr: 0x0, symBinAddr: 0x6E8, symSize: 0x79 }
+  - { offset: 0x63AAF, size: 0x8, addend: 0x0, symName: _gInterfacePtr, symObjAddr: 0x16B0, symBinAddr: 0x3068, symSize: 0x0 }
+  - { offset: 0x63AC5, size: 0x8, addend: 0x0, symName: _gInterface, symObjAddr: 0x16B8, symBinAddr: 0x3070, symSize: 0x0 }
+  - { offset: 0x63ADB, size: 0x8, addend: 0x0, symName: _gStateMutex, symObjAddr: 0x1770, symBinAddr: 0x3128, symSize: 0x0 }
+  - { offset: 0x63AF1, size: 0x8, addend: 0x0, symName: _gRefCount, symObjAddr: 0x9B60, symBinAddr: 0x3180, symSize: 0x0 }
+  - { offset: 0x63B0E, size: 0x8, addend: 0x0, symName: _gHost, symObjAddr: 0x9B68, symBinAddr: 0x3188, symSize: 0x0 }
+  - { offset: 0x63B24, size: 0x8, addend: 0x0, symName: _gSampleRate, symObjAddr: 0x17B0, symBinAddr: 0x3168, symSize: 0x0 }
+  - { offset: 0x63B41, size: 0x8, addend: 0x0, symName: _gHostTicksPerFrame, symObjAddr: 0x9B70, symBinAddr: 0x3190, symSize: 0x0 }
+  - { offset: 0x63B57, size: 0x8, addend: 0x0, symName: _kSupportedRates, symObjAddr: 0x17C0, symBinAddr: 0x1E70, symSize: 0x0 }
+  - { offset: 0x63B85, size: 0x8, addend: 0x0, symName: _gIOClients, symObjAddr: 0x9B78, symBinAddr: 0x3198, symSize: 0x0 }
+  - { offset: 0x63B9B, size: 0x8, addend: 0x0, symName: _gInputActive, symObjAddr: 0x17B8, symBinAddr: 0x3170, symSize: 0x0 }
+  - { offset: 0x63BB1, size: 0x8, addend: 0x0, symName: _gOutputActive, symObjAddr: 0x17BC, symBinAddr: 0x3174, symSize: 0x0 }
+  - { offset: 0x63BC7, size: 0x8, addend: 0x0, symName: _gTimeStampCount, symObjAddr: 0x9B80, symBinAddr: 0x31A0, symSize: 0x0 }
+  - { offset: 0x63BE4, size: 0x8, addend: 0x0, symName: _gAnchorHostTime, symObjAddr: 0x9B88, symBinAddr: 0x31A8, symSize: 0x0 }
+  - { offset: 0x63BFA, size: 0x8, addend: 0x0, symName: _gWrittenUntil, symObjAddr: 0x9B90, symBinAddr: 0x31B0, symSize: 0x0 }
+  - { offset: 0x63C10, size: 0x8, addend: 0x0, symName: _gRing, symObjAddr: 0x9BA0, symBinAddr: 0x31C0, symSize: 0x0 }
+  - { offset: 0x63C45, size: 0x8, addend: 0x0, symName: _AudioMac_Create, symObjAddr: 0x0, symBinAddr: 0x6E8, symSize: 0x79 }
+  - { offset: 0x63D58, size: 0x8, addend: 0x0, symName: _QueryInterface, symObjAddr: 0x79, symBinAddr: 0x761, symSize: 0x120 }
+  - { offset: 0x63EFF, size: 0x8, addend: 0x0, symName: _AddRef, symObjAddr: 0x199, symBinAddr: 0x881, symSize: 0x41 }
+  - { offset: 0x63F66, size: 0x8, addend: 0x0, symName: _Release, symObjAddr: 0x1DA, symBinAddr: 0x8C2, symSize: 0x4B }
+  - { offset: 0x63FDF, size: 0x8, addend: 0x0, symName: _Initialize, symObjAddr: 0x225, symBinAddr: 0x90D, symSize: 0x7F }
+  - { offset: 0x64097, size: 0x8, addend: 0x0, symName: _CreateDevice, symObjAddr: 0x2A4, symBinAddr: 0x98C, symSize: 0xB }
+  - { offset: 0x640E2, size: 0x8, addend: 0x0, symName: _DestroyDevice, symObjAddr: 0x2AF, symBinAddr: 0x997, symSize: 0xB }
+  - { offset: 0x64115, size: 0x8, addend: 0x0, symName: _AddDeviceClient, symObjAddr: 0x2BA, symBinAddr: 0x9A2, symSize: 0x20 }
+  - { offset: 0x64158, size: 0x8, addend: 0x0, symName: _RemoveDeviceClient, symObjAddr: 0x2DA, symBinAddr: 0x9C2, symSize: 0x20 }
+  - { offset: 0x6419B, size: 0x8, addend: 0x0, symName: _PerformDeviceConfigurationChange, symObjAddr: 0x2FA, symBinAddr: 0x9E2, symSize: 0xB7 }
+  - { offset: 0x6426D, size: 0x8, addend: 0x0, symName: _AbortDeviceConfigurationChange, symObjAddr: 0x3B1, symBinAddr: 0xA99, symSize: 0x8 }
+  - { offset: 0x642B8, size: 0x8, addend: 0x0, symName: _HasProperty, symObjAddr: 0x3B9, symBinAddr: 0xAA1, symSize: 0x4E }
+  - { offset: 0x64323, size: 0x8, addend: 0x0, symName: _PropertyImpl, symObjAddr: 0xB16, symBinAddr: 0x11FE, symSize: 0xA3B }
+  - { offset: 0x6489A, size: 0x8, addend: 0x0, symName: _IsPropertySettable, symObjAddr: 0x407, symBinAddr: 0xAEF, symSize: 0xAC }
+  - { offset: 0x64977, size: 0x8, addend: 0x0, symName: _GetPropertyDataSize, symObjAddr: 0x4B3, symBinAddr: 0xB9B, symSize: 0x5A }
+  - { offset: 0x64A1A, size: 0x8, addend: 0x0, symName: _GetPropertyData, symObjAddr: 0x50D, symBinAddr: 0xBF5, symSize: 0x69 }
+  - { offset: 0x64AD6, size: 0x8, addend: 0x0, symName: _SetPropertyData, symObjAddr: 0x576, symBinAddr: 0xC5E, symSize: 0x123 }
+  - { offset: 0x64BC6, size: 0x8, addend: 0x0, symName: _RequestSampleRate, symObjAddr: 0x1551, symBinAddr: 0x1C39, symSize: 0xBC }
+  - { offset: 0x64C81, size: 0x8, addend: 0x0, symName: _StartIO, symObjAddr: 0x699, symBinAddr: 0xD81, symSize: 0x88 }
+  - { offset: 0x64D02, size: 0x8, addend: 0x0, symName: _StopIO, symObjAddr: 0x721, symBinAddr: 0xE09, symSize: 0x4E }
+  - { offset: 0x64D69, size: 0x8, addend: 0x0, symName: _GetZeroTimeStamp, symObjAddr: 0x76F, symBinAddr: 0xE57, symSize: 0x13D }
+  - { offset: 0x64E44, size: 0x8, addend: 0x0, symName: _WillDoIOOperation, symObjAddr: 0x8AC, symBinAddr: 0xF94, symSize: 0x3F }
+  - { offset: 0x64EBA, size: 0x8, addend: 0x0, symName: _BeginIOOperation, symObjAddr: 0x8EB, symBinAddr: 0xFD3, symSize: 0x20 }
+  - { offset: 0x64F28, size: 0x8, addend: 0x0, symName: _DoIOOperation, symObjAddr: 0x90B, symBinAddr: 0xFF3, symSize: 0x1EB }
+  - { offset: 0x65128, size: 0x8, addend: 0x0, symName: _EndIOOperation, symObjAddr: 0xAF6, symBinAddr: 0x11DE, symSize: 0x20 }
+...

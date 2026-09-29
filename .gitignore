@@ -1,8 +1,9 @@
 # macOS
 .DS_Store
 
-# Build
-build/
+# Build: only the Release products are tracked, not intermediates or verification screenshots
+build/*
+!build/Release/
 DerivedData/
 
 # Xcode (per-user data)
