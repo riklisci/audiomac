@@ -6,4 +6,9 @@ cd "$(dirname "$0")"
 xcodebuild -project AudioMac.xcodeproj -target AudioMac -configuration Release \
   SYMROOT="$PWD/build" OBJROOT="$PWD/build/obj" build | grep -E "error:|warning:|BUILD" | grep -v appintents || true
 
-test -d build/Release/AudioMac.app && echo "Built build/Release/AudioMac.app"
+APP=build/Release/AudioMac.app
+test -d "$APP" || exit 1
+# Rebuilds don't update the bundle's date, so Finder would keep showing a cached icon.
+touch "$APP"
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP"
+echo "Built $APP"
