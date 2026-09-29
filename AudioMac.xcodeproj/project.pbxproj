@@ -1,0 +1,428 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AA0000000000000000000B01 /* AudioMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000F01 /* AudioMacApp.swift */; };
+		AA0000000000000000000B02 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000F02 /* ContentView.swift */; };
+		AA0000000000000000000B03 /* Recorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000F03 /* Recorder.swift */; };
+		AA0000000000000000000B04 /* CaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000F04 /* CaptureEngine.swift */; };
+		AA0000000000000000000B05 /* SourceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000F05 /* SourceCatalog.swift */; };
+		AA0000000000000000000B06 /* VideoSources.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000F06 /* VideoSources.swift */; };
+		AA0000000000000000000B07 /* AudioSources.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000F07 /* AudioSources.swift */; };
+		AA0000000000000000000B08 /* LoopbackDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000F08 /* LoopbackDriver.swift */; };
+		AA0000000000000000000B0B /* AudioMacDriver.c in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000F0B /* AudioMacDriver.c */; };
+		AA0000000000000000000B0E /* AudioMacLoopback.driver in Embed Audio Driver */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000F0E /* AudioMacLoopback.driver */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		AA0000000000000000000D02 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA0000000000000000000A00 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AA0000000000000000000702;
+			remoteInfo = AudioMacLoopback;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AA0000000000000000000904 /* Embed Audio Driver */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 7;
+			files = (
+				AA0000000000000000000B0E /* AudioMacLoopback.driver in Embed Audio Driver */,
+			);
+			name = "Embed Audio Driver";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		AA0000000000000000000F01 /* AudioMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioMacApp.swift; sourceTree = "<group>"; };
+		AA0000000000000000000F02 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		AA0000000000000000000F03 /* Recorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recorder.swift; sourceTree = "<group>"; };
+		AA0000000000000000000F04 /* CaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEngine.swift; sourceTree = "<group>"; };
+		AA0000000000000000000F05 /* SourceCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceCatalog.swift; sourceTree = "<group>"; };
+		AA0000000000000000000F06 /* VideoSources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSources.swift; sourceTree = "<group>"; };
+		AA0000000000000000000F07 /* AudioSources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSources.swift; sourceTree = "<group>"; };
+		AA0000000000000000000F08 /* LoopbackDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopbackDriver.swift; sourceTree = "<group>"; };
+		AA0000000000000000000F09 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AA0000000000000000000F0A /* AudioMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AudioMac.entitlements; sourceTree = "<group>"; };
+		AA0000000000000000000F0B /* AudioMacDriver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = AudioMacDriver.c; sourceTree = "<group>"; };
+		AA0000000000000000000F0C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AA0000000000000000000F0D /* AudioMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AudioMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000F0E /* AudioMacLoopback.driver */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AudioMacLoopback.driver; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AA0000000000000000000902 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA0000000000000000000906 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		AA0000000000000000000800 = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000801 /* AudioMac */,
+				AA0000000000000000000802 /* AudioMacDriver */,
+				AA0000000000000000000803 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000801 /* AudioMac */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000F01 /* AudioMacApp.swift */,
+				AA0000000000000000000F02 /* ContentView.swift */,
+				AA0000000000000000000F03 /* Recorder.swift */,
+				AA0000000000000000000F04 /* CaptureEngine.swift */,
+				AA0000000000000000000F05 /* SourceCatalog.swift */,
+				AA0000000000000000000F06 /* VideoSources.swift */,
+				AA0000000000000000000F07 /* AudioSources.swift */,
+				AA0000000000000000000F08 /* LoopbackDriver.swift */,
+				AA0000000000000000000F09 /* Info.plist */,
+				AA0000000000000000000F0A /* AudioMac.entitlements */,
+			);
+			path = AudioMac;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000802 /* AudioMacDriver */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000F0B /* AudioMacDriver.c */,
+				AA0000000000000000000F0C /* Info.plist */,
+			);
+			path = AudioMacDriver;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000803 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000F0D /* AudioMac.app */,
+				AA0000000000000000000F0E /* AudioMacLoopback.driver */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AA0000000000000000000701 /* AudioMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA0000000000000000000601 /* Build configuration list for PBXNativeTarget "AudioMac" */;
+			buildPhases = (
+				AA0000000000000000000901 /* Sources */,
+				AA0000000000000000000902 /* Frameworks */,
+				AA0000000000000000000903 /* Resources */,
+				AA0000000000000000000904 /* Embed Audio Driver */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AA0000000000000000000D01 /* PBXTargetDependency */,
+			);
+			name = AudioMac;
+			productName = AudioMac;
+			productReference = AA0000000000000000000F0D /* AudioMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+		AA0000000000000000000702 /* AudioMacLoopback */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA0000000000000000000602 /* Build configuration list for PBXNativeTarget "AudioMacLoopback" */;
+			buildPhases = (
+				AA0000000000000000000905 /* Sources */,
+				AA0000000000000000000906 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AudioMacLoopback;
+			productName = AudioMacLoopback;
+			productReference = AA0000000000000000000F0E /* AudioMacLoopback.driver */;
+			productType = "com.apple.product-type.bundle";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AA0000000000000000000A00 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2630;
+			};
+			buildConfigurationList = AA0000000000000000000600 /* Build configuration list for PBXProject "AudioMac" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = it;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				it,
+				en,
+				Base,
+			);
+			mainGroup = AA0000000000000000000800;
+			productRefGroup = AA0000000000000000000803 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AA0000000000000000000701 /* AudioMac */,
+				AA0000000000000000000702 /* AudioMacLoopback */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		AA0000000000000000000903 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AA0000000000000000000901 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA0000000000000000000B01 /* AudioMacApp.swift in Sources */,
+				AA0000000000000000000B02 /* ContentView.swift in Sources */,
+				AA0000000000000000000B03 /* Recorder.swift in Sources */,
+				AA0000000000000000000B04 /* CaptureEngine.swift in Sources */,
+				AA0000000000000000000B05 /* SourceCatalog.swift in Sources */,
+				AA0000000000000000000B06 /* VideoSources.swift in Sources */,
+				AA0000000000000000000B07 /* AudioSources.swift in Sources */,
+				AA0000000000000000000B08 /* LoopbackDriver.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA0000000000000000000905 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA0000000000000000000B0B /* AudioMacDriver.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AA0000000000000000000D01 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AA0000000000000000000702 /* AudioMacLoopback */;
+			targetProxy = AA0000000000000000000D02 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		AA0000000000000000000C01 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 2;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				MARKETING_VERSION = 2.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		AA0000000000000000000C02 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 2;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				MARKETING_VERSION = 2.0;
+				ONLY_ACTIVE_ARCH = NO;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		AA0000000000000000000C03 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = AudioMac/AudioMac.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = AudioMac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-weak_framework",
+					ScreenCaptureKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rikdev.audiomac;
+				PRODUCT_NAME = AudioMac;
+			};
+			name = Debug;
+		};
+		AA0000000000000000000C04 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = AudioMac/AudioMac.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = AudioMac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-weak_framework",
+					ScreenCaptureKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rikdev.audiomac;
+				PRODUCT_NAME = AudioMac;
+			};
+			name = Release;
+		};
+		AA0000000000000000000C05 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				INFOPLIST_FILE = AudioMacDriver/Info.plist;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-framework",
+					CoreAudio,
+					"-framework",
+					CoreFoundation,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rikdev.audiomac.driver;
+				PRODUCT_NAME = AudioMacLoopback;
+				SKIP_INSTALL = YES;
+				WRAPPER_EXTENSION = driver;
+			};
+			name = Debug;
+		};
+		AA0000000000000000000C06 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				INFOPLIST_FILE = AudioMacDriver/Info.plist;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-framework",
+					CoreAudio,
+					"-framework",
+					CoreFoundation,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rikdev.audiomac.driver;
+				PRODUCT_NAME = AudioMacLoopback;
+				SKIP_INSTALL = YES;
+				WRAPPER_EXTENSION = driver;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AA0000000000000000000600 /* Build configuration list for PBXProject "AudioMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA0000000000000000000C01 /* Debug */,
+				AA0000000000000000000C02 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA0000000000000000000601 /* Build configuration list for PBXNativeTarget "AudioMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA0000000000000000000C03 /* Debug */,
+				AA0000000000000000000C04 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA0000000000000000000602 /* Build configuration list for PBXNativeTarget "AudioMacLoopback" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA0000000000000000000C05 /* Debug */,
+				AA0000000000000000000C06 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AA0000000000000000000A00 /* Project object */;
+}

@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Build
+build/
+DerivedData/
+
+# Xcode (dati per utente)
+xcuserdata/
+*.xcuserstate
+
+# File di lock di Affinity
+*~lock~
