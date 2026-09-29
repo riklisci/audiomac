@@ -85,8 +85,9 @@ final class Recorder: ObservableObject {
     private var meterTimer: Timer?
     private var clockTimer: Timer?
     private var startDate: Date?
+    private var activationObserver: NSObjectProtocol?
 
-    private static let permissionMessage = "Permission missing: System Settings/Preferences → Privacy & Security → Screen Recording. Enable AudioMac and restart the app."
+    private static let permissionMessage = "Permission missing: System Settings/Preferences → Privacy & Security → Screen Recording. Enable AudioMac, then come back to this window (reopen the app if Mac audio still doesn't start)."
 
     var driverInstalled: Bool { LoopbackDriver.isInstalled }
 
@@ -107,6 +108,16 @@ final class Recorder: ObservableObject {
 
         meterTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.updateLevels() }
+        }
+
+        // The user typically grants Screen Recording in System Settings and then switches back:
+        // retry the Mac audio capture instead of requiring a relaunch.
+        activationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, case .failed = self.systemAudio else { return }
+                await self.startSystemAudio()
+            }
         }
     }
 
@@ -163,6 +174,7 @@ final class Recorder: ObservableObject {
             try await input.start()
             systemInput = input
             systemAudio = .active
+            if status == Self.permissionMessage { status = "Ready" }
         } catch {
             systemAudio = .failed(error.localizedDescription)
             if !Self.usesDriverAudio { status = Self.permissionMessage }
