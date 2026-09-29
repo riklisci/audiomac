@@ -1,15 +1,15 @@
 @preconcurrency import AVFoundation
 import ScreenCaptureKit
 
-/// Sorgente audio sempre attiva (alimenta i livelli e, durante la registrazione, il file):
-/// consegna i buffer a `engine.appendAudio` sulla coda del motore, con timestamp nel clock host.
+/// Always-on audio source (feeds the level meters and, while recording, the file):
+/// delivers buffers to `engine.appendAudio` on the engine's queue, timestamped on the host clock.
 protocol AudioInput: AnyObject {
     var onError: ((Error) -> Void)? { get set }
     func start() async throws
     func stop() async
 }
 
-// MARK: - Dispositivo di ingresso (microfono o driver loopback), tutte le versioni
+// MARK: - Input device (microphone or loopback driver), all versions
 
 final class DeviceAudioInput: NSObject, AudioInput, AVCaptureAudioDataOutputSampleBufferDelegate, @unchecked Sendable {
     var onError: ((Error) -> Void)?
@@ -56,7 +56,7 @@ final class DeviceAudioInput: NSObject, AudioInput, AVCaptureAudioDataOutputSamp
             self?.onError?(error)
         }
 
-        // startRunning è bloccante: fuori dal main thread.
+        // startRunning blocks: keep it off the main thread.
         let session = self.session
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             DispatchQueue.global(qos: .userInitiated).async {
@@ -82,7 +82,7 @@ final class DeviceAudioInput: NSObject, AudioInput, AVCaptureAudioDataOutputSamp
         engine.appendAudio(hostTimed(sampleBuffer), from: source)
     }
 
-    /// I buffer di AVCaptureSession sono nel clock della sessione; video e altre sorgenti usano il clock host.
+    /// AVCaptureSession buffers are on the session clock; video and the other sources use the host clock.
     private func hostTimed(_ sampleBuffer: CMSampleBuffer) -> CMSampleBuffer {
         let clock: CMClock?
         if #available(macOS 12.3, *) {
@@ -104,7 +104,7 @@ final class DeviceAudioInput: NSObject, AudioInput, AVCaptureAudioDataOutputSamp
     }
 }
 
-// MARK: - macOS 13+: audio di sistema con ScreenCaptureKit
+// MARK: - macOS 13+: system audio with ScreenCaptureKit
 
 @available(macOS 13.0, *)
 final class SCKSystemAudioInput: NSObject, AudioInput, SCStreamOutput, SCStreamDelegate {
@@ -121,8 +121,8 @@ final class SCKSystemAudioInput: NSObject, AudioInput, SCStreamOutput, SCStreamD
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         guard let display = content.displays.first else { throw CaptureError.noDisplay }
         let own = content.applications.filter { $0.processID == ProcessInfo.processInfo.processIdentifier }
-        // Filtro sull'intero schermo: così l'audio è quello di tutto il Mac (tranne AudioMac),
-        // anche quando il video registra una sola finestra.
+        // Full-display filter: the audio is the whole Mac's (except AudioMac),
+        // even when the video records a single window.
         let filter = SCContentFilter(display: display, excludingApplications: own, exceptingWindows: [])
 
         let config = SCStreamConfiguration()
@@ -136,7 +136,7 @@ final class SCKSystemAudioInput: NSObject, AudioInput, SCStreamOutput, SCStreamD
         config.channelCount = 2
 
         let stream = SCStream(filter: filter, configuration: config, delegate: self)
-        // ScreenCaptureKit produce comunque video: lo scartiamo.
+        // ScreenCaptureKit always produces video: discard it.
         try stream.addStreamOutput(discard, type: .screen, sampleHandlerQueue: engine.queue)
         try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: engine.queue)
         try await stream.startCapture()
@@ -164,9 +164,9 @@ private final class DiscardOutput: NSObject, SCStreamOutput {
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {}
 }
 
-// MARK: - macOS 11–12: audio di sistema tramite il driver AudioMac Loopback
+// MARK: - macOS 11–12: system audio through the AudioMac Loopback driver
 
-/// Instrada l'uscita audio su "altoparlanti + loopback" e registra dall'ingresso del loopback.
+/// Routes the audio output to "speakers + loopback" and records from the loopback input.
 final class LoopbackAudioInput: AudioInput {
     var onError: ((Error) -> Void)? {
         didSet { capture?.onError = onError }

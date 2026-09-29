@@ -12,7 +12,7 @@ struct AudioMacApp: App {
         }
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button(recorder.isRecording ? "Ferma registrazione" : "Avvia registrazione") {
+                Button(recorder.isRecording ? "Stop Recording" : "Start Recording") {
                     recorder.toggle()
                 }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         true
     }
 
-    /// Chiude correttamente il file in registrazione e ripristina l'uscita audio prima di uscire.
+    /// Properly closes the file being recorded and restores the audio output before quitting.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         Task { @MainActor in
             await Recorder.shared.shutdown()

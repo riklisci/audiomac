@@ -2,9 +2,9 @@ import AVFoundation
 import CoreGraphics
 import ScreenCaptureKit
 
-/// Sorgente di fotogrammi: consegna i pixel buffer a `engine.appendVideo` sulla coda del motore.
+/// Frame source: delivers pixel buffers to `engine.appendVideo` on the engine's queue.
 protocol VideoSource: AnyObject {
-    /// Chiamato su una coda qualsiasi se la cattura si interrompe da sola (es. finestra chiusa).
+    /// Called on an arbitrary queue if capture stops by itself (e.g. the window was closed).
     var onError: ((Error) -> Void)? { get set }
     func start(engine: CaptureEngine) async throws
     func stop() async
@@ -43,7 +43,7 @@ final class SCKVideoSource: NSObject, VideoSource, SCStreamOutput, SCStreamDeleg
         switch target {
         case .display(let info):
             guard let display = content.displays.first(where: { $0.displayID == info.id }) else { throw CaptureError.targetGone }
-            // La finestra di AudioMac non compare nel video.
+            // Keep AudioMac's own window out of the video.
             let own = content.applications.filter { $0.processID == ProcessInfo.processInfo.processIdentifier }
             filter = SCContentFilter(display: display, excludingApplications: own, exceptingWindows: [])
         case .window(let info):
@@ -88,7 +88,7 @@ final class SCKVideoSource: NSObject, VideoSource, SCStreamOutput, SCStreamDeleg
     }
 }
 
-// MARK: - macOS 11–12.2: schermo intero con CGDisplayStream
+// MARK: - macOS 11–12.2: full screen with CGDisplayStream
 
 final class DisplayStreamSource: VideoSource {
     var onError: ((Error) -> Void)?
@@ -131,8 +131,8 @@ final class DisplayStreamSource: VideoSource {
         stream = nil
     }
 
-    /// Le IOSurface di CGDisplayStream vengono riutilizzate: copia il fotogramma in un buffer nostro
-    /// prima di passarlo all'encoder.
+    /// CGDisplayStream reuses its IOSurfaces: copy the frame into our own buffer
+    /// before handing it to the encoder.
     private func copy(_ surface: IOSurfaceRef) -> CVPixelBuffer? {
         guard let pool else { return nil }
         var out: CVPixelBuffer?
@@ -157,10 +157,10 @@ final class DisplayStreamSource: VideoSource {
     }
 }
 
-// MARK: - macOS 11–12.2: singola finestra con istantanee periodiche
+// MARK: - macOS 11–12.2: single window with periodic snapshots
 
-/// CGWindowListCreateImage non è più disponibile negli SDK recenti: viene risolta a runtime
-/// (esiste su tutte le versioni di macOS e si usa solo dove ScreenCaptureKit manca).
+/// CGWindowListCreateImage is no longer available in recent SDKs: resolve it at runtime
+/// (it exists on every macOS version and is only used where ScreenCaptureKit is missing).
 private typealias CreateWindowImage = @convention(c) (CGRect, UInt32, CGWindowID, UInt32) -> Unmanaged<CGImage>?
 private let createWindowImage: CreateWindowImage? = {
     guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "CGWindowListCreateImage") else { return nil } // RTLD_DEFAULT
@@ -202,7 +202,7 @@ final class WindowSnapshotSource: VideoSource {
 
     private func captureFrame(into engine: CaptureEngine, width: Int, height: Int) {
         ticks += 1
-        // Circa una volta al secondo controlla che la finestra esista ancora.
+        // About once a second, check that the window still exists.
         if ticks % fps == 0, !SourceCatalog.windowExists(window.id) {
             timer?.cancel()
             timer = nil
@@ -228,7 +228,7 @@ final class WindowSnapshotSource: VideoSource {
             space: CGColorSpace(name: CGColorSpace.sRGB)!,
             bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue) else { return }
 
-        // Sfondo nero e immagine adattata mantenendo le proporzioni (la finestra può essere ridimensionata).
+        // Black background and aspect-fit image (the window can be resized).
         context.setFillColor(CGColor(gray: 0, alpha: 1))
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         let scale = min(CGFloat(width) / CGFloat(image.width), CGFloat(height) / CGFloat(image.height))

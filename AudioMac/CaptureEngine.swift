@@ -1,7 +1,7 @@
 import Accelerate
 import AVFoundation
 
-/// Accumula il picco (lineare) tra una lettura e l'altra. Thread-safe.
+/// Accumulates the (linear) peak between reads. Thread-safe.
 final class LevelMeter {
     private let lock = NSLock()
     private var peak: Float = 0
@@ -30,18 +30,18 @@ final class AtomicBool {
 
 enum AudioSource { case system, microphone }
 
-/// Riceve frame video e buffer audio dalle sorgenti (tutte richiamate su `queue`),
-/// aggiorna i livelli e, durante la registrazione, scrive il file con AVAssetWriter.
-/// Tutti i timestamp sono nel clock host (mach_absolute_time).
+/// Receives video frames and audio buffers from the sources (all called on `queue`),
+/// updates the levels and, while recording, writes the file with AVAssetWriter.
+/// All timestamps are on the host clock (mach_absolute_time).
 final class CaptureEngine: @unchecked Sendable {
-    /// Coda seriale su cui le sorgenti consegnano i campioni.
+    /// Serial queue on which sources deliver their samples.
     let queue = DispatchQueue(label: "audiomac.capture", qos: .userInitiated)
     let systemLevel = LevelMeter()
     let micLevel = LevelMeter()
     let systemMuted = AtomicBool(false)
     let micMuted = AtomicBool(false)
 
-    // Confinato su `queue`.
+    // Confined to `queue`.
     private var recording: Recording?
 
     private final class Recording {
@@ -70,7 +70,7 @@ final class CaptureEngine: @unchecked Sendable {
         }
     }
 
-    // MARK: - Registrazione
+    // MARK: - Recording
 
     func prepare(url: URL, width: Int, height: Int, codec: AVVideoCodecType, fps: Int, includeMic: Bool) throws {
         try queue.sync {
@@ -112,7 +112,7 @@ final class CaptureEngine: @unchecked Sendable {
         }
     }
 
-    /// Annulla una registrazione preparata ma mai avviata (es. la sorgente video non è partita).
+    /// Cancels a recording that was prepared but never started (e.g. the video source failed to start).
     func cancel() {
         queue.sync {
             guard let rec = recording else { return }
@@ -122,7 +122,7 @@ final class CaptureEngine: @unchecked Sendable {
         }
     }
 
-    /// Chiude il file. `completion` viene chiamato su una coda qualsiasi.
+    /// Finalizes the file. `completion` is called on an arbitrary queue.
     func finish(completion: @escaping (Result<URL, Error>) -> Void) {
         queue.async {
             guard let rec = self.recording else {
@@ -165,7 +165,7 @@ final class CaptureEngine: @unchecked Sendable {
         ]
     }
 
-    // MARK: - Ingresso campioni (su `queue`)
+    // MARK: - Sample input (on `queue`)
 
     func appendVideo(_ pixelBuffer: CVPixelBuffer, at pts: CMTime) {
         dispatchPrecondition(condition: .onQueue(queue))
@@ -201,8 +201,8 @@ final class CaptureEngine: @unchecked Sendable {
         let timescale = CMTimeScale(asbd.mSampleRate)
         var next = isSystem ? rec.systemNext : rec.micNext
 
-        // Se la sorgente ha saltato dei buffer (es. nessun suono in riproduzione), riempi con silenzio
-        // per mantenere la traccia sincronizzata con il video.
+        // If the source skipped buffers (e.g. nothing is playing), fill the gap with silence
+        // to keep the track in sync with the video.
         let gap = CMTimeGetSeconds(pts - next)
         if gap > 0.02 {
             var remaining = Int((gap * asbd.mSampleRate).rounded())
@@ -227,9 +227,9 @@ final class CaptureEngine: @unchecked Sendable {
         rec.extend(to: next)
     }
 
-    // MARK: - Utilità sui buffer
+    // MARK: - Buffer utilities
 
-    /// Picco lineare (0...1) di un buffer PCM.
+    /// Linear peak (0...1) of a PCM buffer.
     static func peak(of sampleBuffer: CMSampleBuffer) -> Float {
         guard let format = CMSampleBufferGetFormatDescription(sampleBuffer),
               let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(format)?.pointee,
@@ -275,7 +275,7 @@ final class CaptureEngine: @unchecked Sendable {
         return min(peak, 1)
     }
 
-    /// Buffer PCM di silenzio con lo stesso formato di `format`.
+    /// Silent PCM buffer with the same format as `format`.
     static func silentBuffer(format: CMAudioFormatDescription, frames: Int, at pts: CMTime) -> CMSampleBuffer? {
         guard frames > 0, let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(format)?.pointee else { return nil }
         let nonInterleaved = asbd.mFormatFlags & kAudioFormatFlagIsNonInterleaved != 0
@@ -310,14 +310,14 @@ enum CaptureError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .writerSetup: return "Impossibile creare il file video."
-        case .noFrames: return "Nessun fotogramma ricevuto."
-        case .targetGone: return "La finestra o lo schermo selezionato non è più disponibile."
-        case .videoStart: return "Impossibile avviare la cattura video."
-        case .noDisplay: return "Nessuno schermo disponibile."
-        case .noAudioDevice: return "Dispositivo audio non trovato."
-        case .driverMissing: return "Driver AudioMac Loopback non installato."
-        case .driverInstall(let message): return "Installazione del driver non riuscita: \(message)"
+        case .writerSetup: return "Couldn't create the video file."
+        case .noFrames: return "No frames were received."
+        case .targetGone: return "The selected window or display is no longer available."
+        case .videoStart: return "Couldn't start video capture."
+        case .noDisplay: return "No display available."
+        case .noAudioDevice: return "Audio device not found."
+        case .driverMissing: return "The AudioMac Loopback driver isn't installed."
+        case .driverInstall(let message): return "Driver installation failed: \(message)"
         }
     }
 }

@@ -1,9 +1,9 @@
 import CoreAudio
 import Foundation
 
-/// Accesso minimo alle proprietà CoreAudio necessarie.
+/// Minimal access to the CoreAudio properties we need.
 enum CoreAudioDevices {
-    /// kAudioObjectPropertyElementMain (= 0), disponibile con quel nome solo da macOS 12.
+    /// kAudioObjectPropertyElementMain (= 0), only available under that name since macOS 12.
     private static let elementMain: AudioObjectPropertyElement = 0
 
     private static func address(_ selector: AudioObjectPropertySelector) -> AudioObjectPropertyAddress {
@@ -49,20 +49,20 @@ enum CoreAudioDevices {
     }
 }
 
-/// Il driver AudioMac Loopback incluso nell'app (usato solo su macOS 11–12).
+/// The AudioMac Loopback driver bundled with the app (only used on macOS 11–12).
 enum LoopbackDriver {
     static let deviceUID = "AudioMacLoopback_UID"
     private static let bundleName = "AudioMacLoopback.driver"
     private static let installPath = "/Library/Audio/Plug-Ins/HAL/AudioMacLoopback.driver"
 
-    /// Il dispositivo è caricato da CoreAudio.
+    /// The device is loaded by CoreAudio.
     static var deviceID: AudioDeviceID? { CoreAudioDevices.device(withUID: deviceUID) }
 
     static var isInstalled: Bool { FileManager.default.fileExists(atPath: installPath) }
 
     static func install() async throws {
         guard let source = Bundle.main.url(forResource: "AudioMacLoopback", withExtension: "driver") else {
-            throw CaptureError.driverInstall("il driver non è incluso nell'app.")
+            throw CaptureError.driverInstall("the driver isn't bundled with the app.")
         }
         try await runAsAdministrator([
             "mkdir -p /Library/Audio/Plug-Ins/HAL",
@@ -72,19 +72,19 @@ enum LoopbackDriver {
             "killall coreaudiod",
         ].joined(separator: " && "))
 
-        // coreaudiod viene riavviato da launchd e carica il driver.
+        // launchd restarts coreaudiod, which loads the driver.
         for _ in 0..<40 {
             if deviceID != nil { return }
             try await Task.sleep(nanoseconds: 500_000_000)
         }
-        throw CaptureError.driverInstall("il dispositivo non è comparso. Riavvia il Mac e riprova.")
+        throw CaptureError.driverInstall("the device didn't show up. Restart your Mac and try again.")
     }
 
     static func uninstall() async throws {
         try await runAsAdministrator("rm -rf \(shellQuoted(installPath)) && killall coreaudiod")
     }
 
-    /// Esegue un comando shell con i privilegi di amministratore (macOS chiede la password).
+    /// Runs a shell command with administrator privileges (macOS asks for the password).
     private static func runAsAdministrator(_ command: String) async throws {
         let escaped = command
             .replacingOccurrences(of: "\\", with: "\\\\")
@@ -107,7 +107,7 @@ enum LoopbackDriver {
         }
         guard status == 0 else {
             let message = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-            if message.contains("-128") { throw CaptureError.driverInstall("operazione annullata.") }
+            if message.contains("-128") { throw CaptureError.driverInstall("cancelled.") }
             throw CaptureError.driverInstall(message.trimmingCharacters(in: .whitespacesAndNewlines))
         }
     }
@@ -117,9 +117,9 @@ enum LoopbackDriver {
     }
 }
 
-/// Mentre AudioMac è aperta (solo macOS 11–12), l'uscita predefinita diventa un dispositivo multi-uscita
-/// "altoparlanti + AudioMac Loopback": continui a sentire l'audio e il loopback lo riceve per la registrazione.
-/// All'uscita dall'app tutto torna com'era.
+/// While AudioMac is open (macOS 11–12 only), the default output becomes a Multi-Output Device
+/// "speakers + AudioMac Loopback": you keep hearing the audio and the loopback receives it for recording.
+/// Everything is restored when the app quits.
 final class OutputRouter {
     static let shared = OutputRouter()
 
@@ -137,12 +137,12 @@ final class OutputRouter {
 
         guard let loopback = LoopbackDriver.deviceID,
               let current = CoreAudioDevices.defaultOutput else { throw CaptureError.noAudioDevice }
-        // Se l'uscita è già il loopback l'audio arriva comunque al driver (ma non agli altoparlanti).
+        // If the output already is the loopback, audio reaches the driver anyway (but not the speakers).
         guard current != loopback, let speakerUID = CoreAudioDevices.uid(of: current) else { return }
 
         let description: [String: Any] = [
             kAudioAggregateDeviceUIDKey: Self.aggregateUID,
-            kAudioAggregateDeviceNameKey: "AudioMac (altoparlanti + registrazione)",
+            kAudioAggregateDeviceNameKey: "AudioMac (Speakers + Recording)",
             kAudioAggregateDeviceIsStackedKey: 1,
             kAudioAggregateDeviceIsPrivateKey: 0,
             "master": speakerUID, // kAudioAggregateDeviceMainSubDeviceKey
@@ -174,7 +174,7 @@ final class OutputRouter {
         UserDefaults.standard.removeObject(forKey: Self.previousOutputKey)
     }
 
-    /// Rimuove il dispositivo multi-uscita rimasto da un'esecuzione terminata in modo anomalo.
+    /// Removes a Multi-Output Device left over from a run that didn't quit cleanly.
     func cleanupLeftovers() {
         lock.lock()
         defer { lock.unlock() }

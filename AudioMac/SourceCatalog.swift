@@ -19,7 +19,7 @@ enum CaptureTarget {
     case display(DisplayInfo)
     case window(WindowInfo)
 
-    /// Dimensioni del video (pari, come richiesto dagli encoder).
+    /// Video size (even, as the encoders require).
     var videoSize: (width: Int, height: Int) {
         switch self {
         case .display(let d): return (d.pixelWidth & ~1, d.pixelHeight & ~1)
@@ -28,7 +28,7 @@ enum CaptureTarget {
     }
 }
 
-/// Elenco di schermi e finestre tramite CoreGraphics: funziona su tutte le versioni di macOS supportate.
+/// Display and window lists via CoreGraphics: works on every supported macOS version.
 enum SourceCatalog {
     static func displays() -> [DisplayInfo] {
         NSScreen.screens.compactMap { screen in

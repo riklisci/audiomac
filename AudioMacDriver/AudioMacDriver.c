@@ -1,10 +1,10 @@
-// AudioMac Loopback — driver audio virtuale (AudioServerPlugIn) per macOS 11 e 12.
+// AudioMac Loopback — virtual audio driver (AudioServerPlugIn) for macOS 11 and 12.
 //
-// Espone un dispositivo "AudioMac Loopback" con un'uscita e un ingresso stereo:
-// tutto ciò che viene riprodotto sull'uscita è disponibile sull'ingresso.
-// L'app lo usa solo dove ScreenCaptureKit non può catturare l'audio di sistema (macOS < 13).
+// Exposes an "AudioMac Loopback" device with a stereo output and a stereo input:
+// whatever is played on the output is available on the input.
+// The app only uses it where ScreenCaptureKit can't capture system audio (macOS < 13).
 //
-// Struttura basata sull'esempio "NullAudio" di Apple (Creating an Audio Server Driver Plug-in).
+// Structure based on Apple's "NullAudio" sample (Creating an Audio Server Driver Plug-in).
 
 #include <CoreAudio/AudioServerPlugIn.h>
 #include <mach/mach_time.h>
@@ -31,7 +31,7 @@ enum {
 static const Float64 kSupportedRates[] = { 44100.0, 48000.0 };
 #define kSupportedRateCount (sizeof(kSupportedRates) / sizeof(kSupportedRates[0]))
 
-// MARK: - Stato
+// MARK: - State
 
 static pthread_mutex_t          gStateMutex = PTHREAD_MUTEX_INITIALIZER;
 static AudioServerPlugInHostRef gHost = NULL;
@@ -44,9 +44,9 @@ static UInt64                   gTimeStampCount = 0;
 static UInt32                   gInputActive = 1;
 static UInt32                   gOutputActive = 1;
 
-// Accessibili solo dal thread di IO.
+// Only accessed from the IO thread.
 static Float32 gRing[kRingFrames * kChannelCount];
-static Float64 gWrittenUntil = 0; // sample time (esclusivo) fino a cui l'uscita ha scritto nel ring
+static Float64 gWrittenUntil = 0; // sample time (exclusive) up to which the output has written into the ring
 
 static void UpdateHostTicksPerFrame(void) {
     mach_timebase_info_data_t timebase;
@@ -76,7 +76,7 @@ static AudioStreamBasicDescription MakeFormat(Float64 rate) {
     return format;
 }
 
-// MARK: - Interfaccia
+// MARK: - Interface
 
 static HRESULT  QueryInterface(void* inDriver, REFIID inUUID, LPVOID* outInterface);
 static ULONG    AddRef(void* inDriver);
@@ -129,7 +129,7 @@ static AudioServerPlugInDriverInterface gInterface = {
 static AudioServerPlugInDriverInterface* gInterfacePtr = &gInterface;
 static AudioServerPlugInDriverRef        gDriverRef = &gInterfacePtr;
 
-// MARK: - Factory (dichiarata in Info.plist → CFPlugInFactories)
+// MARK: - Factory (declared in Info.plist → CFPlugInFactories)
 
 __attribute__((visibility("default")))
 void* AudioMac_Create(CFAllocatorRef inAllocator, CFUUIDRef inRequestedTypeUUID) {
@@ -175,7 +175,7 @@ static ULONG Release(void* inDriver) {
     return count;
 }
 
-// MARK: - Ciclo di vita
+// MARK: - Lifecycle
 
 static OSStatus Initialize(AudioServerPlugInDriverRef inDriver, AudioServerPlugInHostRef inHost) {
     if (inDriver != gDriverRef) return kAudioHardwareBadObjectError;
@@ -208,7 +208,7 @@ static OSStatus RemoveDeviceClient(AudioServerPlugInDriverRef inDriver, AudioObj
     return kAudioHardwareNoError;
 }
 
-// L'unica modifica di configurazione è il cambio di sample rate: inChangeAction contiene il nuovo valore.
+// The only configuration change is a sample rate change: inChangeAction holds the new rate.
 static OSStatus PerformDeviceConfigurationChange(AudioServerPlugInDriverRef inDriver, AudioObjectID inDeviceObjectID, UInt64 inChangeAction, void* inChangeInfo) {
     (void)inChangeInfo;
     if (inDriver != gDriverRef || inDeviceObjectID != kObjectID_Device) return kAudioHardwareBadObjectError;
@@ -226,9 +226,9 @@ static OSStatus AbortDeviceConfigurationChange(AudioServerPlugInDriverRef inDriv
     return kAudioHardwareNoError;
 }
 
-// MARK: - Proprietà
+// MARK: - Properties
 
-// Scrive un valore scalare; con outData == NULL restituisce solo la dimensione.
+// Writes a scalar value; with outData == NULL it only returns the size.
 #define WRITE_VALUE(type, value)                                                        \
     do {                                                                                \
         if (outData != NULL) {                                                          \
@@ -239,7 +239,7 @@ static OSStatus AbortDeviceConfigurationChange(AudioServerPlugInDriverRef inDriv
         return kAudioHardwareNoError;                                                   \
     } while (0)
 
-// Scrive un array di elementi, troncandolo alla dimensione del buffer ricevuto.
+// Writes an array of items, truncated to the size of the given buffer.
 static OSStatus WriteArray(const void* items, UInt32 count, UInt32 itemSize, UInt32 inDataSize, UInt32* outDataSize, void* outData) {
     if (outData == NULL) {
         *outDataSize = count * itemSize;
@@ -584,7 +584,7 @@ static OSStatus DoIOOperation(AudioServerPlugInDriverRef inDriver, AudioObjectID
     if (ioMainBuffer == NULL || inIOBufferFrameSize > kRingFrames) return kAudioHardwareNoError;
 
     if (inOperationID == kAudioServerPlugInIOOperationWriteMix && inStreamObjectID == kObjectID_Stream_Output) {
-        // Il mix di tutte le app che suonano sul dispositivo: salvalo nel ring alla sua posizione temporale.
+        // The mix of every app playing on the device: store it in the ring at its position in time.
         Float64 sampleTime = floor(inIOCycleInfo->mOutputTime.mSampleTime);
         if (sampleTime < 0) return kAudioHardwareNoError;
         const Float32* source = ioMainBuffer;
@@ -597,8 +597,8 @@ static OSStatus DoIOOperation(AudioServerPlugInDriverRef inDriver, AudioObjectID
         }
         gWrittenUntil = sampleTime + inIOBufferFrameSize;
     } else if (inOperationID == kAudioServerPlugInIOOperationReadInput && inStreamObjectID == kObjectID_Stream_Input) {
-        // Restituisce ciò che è stato riprodotto; silenzio dove il ring non ha dati validi
-        // (nessuna app in riproduzione, o dati più vecchi di un giro del ring).
+        // Return what was played; silence where the ring has no valid data
+        // (nothing playing, or data older than one trip around the ring).
         Float64 sampleTime = floor(inIOCycleInfo->mInputTime.mSampleTime);
         Float32* destination = ioMainBuffer;
         Float64 validStart = gWrittenUntil - kRingFrames;

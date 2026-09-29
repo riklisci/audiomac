@@ -9,8 +9,8 @@ enum VideoCodec: String, CaseIterable, Identifiable {
 }
 
 enum CaptureMode: String, CaseIterable, Identifiable {
-    case display = "Schermo intero"
-    case window = "Singola finestra"
+    case display = "Full Screen"
+    case window = "Single Window"
     var id: String { rawValue }
 }
 
@@ -22,7 +22,7 @@ enum SystemAudioState: Equatable {
     case failed(String)
 }
 
-/// Livelli in dBFS (-60...0), separati dal Recorder per ridisegnare solo i meter.
+/// Levels in dBFS (-60...0), kept apart from Recorder so only the meters redraw.
 @MainActor
 final class Levels: ObservableObject {
     static let floor: Float = -60
@@ -34,18 +34,18 @@ final class Levels: ObservableObject {
 final class Recorder: ObservableObject {
     static let shared = Recorder()
 
-    /// Per provare su un macOS recente il percorso di Big Sur/Monterey (driver + API video precedenti):
+    /// To try the Big Sur/Monterey code path (driver + older video APIs) on a recent macOS:
     /// `defaults write com.rikdev.audiomac ForceLegacyCapture -bool YES`
     static let forceLegacy = UserDefaults.standard.bool(forKey: "ForceLegacyCapture")
 
-    /// ScreenCaptureKit (video) esiste da macOS 12.3.
+    /// ScreenCaptureKit (video) exists since macOS 12.3.
     static var usesLegacyVideo: Bool {
         if forceLegacy { return true }
         if #available(macOS 12.3, *) { return false }
         return true
     }
 
-    /// L'audio di sistema con ScreenCaptureKit esiste da macOS 13; prima serve il driver.
+    /// ScreenCaptureKit system audio exists since macOS 13; earlier versions need the driver.
     static var usesDriverAudio: Bool {
         if forceLegacy { return true }
         if #available(macOS 13.0, *) { return false }
@@ -72,7 +72,7 @@ final class Recorder: ObservableObject {
     @Published private(set) var isRecording = false
     @Published private(set) var isBusy = false
     @Published private(set) var elapsed: TimeInterval = 0
-    @Published private(set) var status = "Pronto"
+    @Published private(set) var status = "Ready"
     @Published private(set) var lastFile: URL?
 
     let levels = Levels()
@@ -86,7 +86,7 @@ final class Recorder: ObservableObject {
     private var clockTimer: Timer?
     private var startDate: Date?
 
-    private static let permissionMessage = "Permesso mancante: Preferenze/Impostazioni di Sistema → Privacy e sicurezza → Registrazione schermo. Abilita AudioMac e riavvia l'app."
+    private static let permissionMessage = "Permission missing: System Settings/Preferences → Privacy & Security → Screen Recording. Enable AudioMac and restart the app."
 
     var driverInstalled: Bool { LoopbackDriver.isInstalled }
 
@@ -121,7 +121,7 @@ final class Recorder: ObservableObject {
         }
     }
 
-    // MARK: - Sorgenti audio
+    // MARK: - Audio sources
 
     private func startMicrophone() async {
         await micInput?.stop()
@@ -130,13 +130,13 @@ final class Recorder: ObservableObject {
 
         let input = DeviceAudioInput(device: device, channels: 1, source: .microphone, engine: engine)
         input.onError = { [weak self] error in
-            Task { @MainActor in self?.status = "Microfono: \(error.localizedDescription)" }
+            Task { @MainActor in self?.status = "Microphone: \(error.localizedDescription)" }
         }
         do {
             try await input.start()
             micInput = input
         } catch {
-            status = "Microfono non disponibile: \(error.localizedDescription)"
+            status = "Microphone unavailable: \(error.localizedDescription)"
         }
     }
 
@@ -173,10 +173,10 @@ final class Recorder: ObservableObject {
         systemAudio = .installing
         do {
             try await LoopbackDriver.install()
-            // Il riavvio di coreaudiod interrompe anche il microfono.
+            // Restarting coreaudiod also interrupts the microphone.
             await startMicrophone()
             await startSystemAudio()
-            status = "Driver installato."
+            status = "Driver installed."
         } catch {
             systemAudio = .needsDriver
             status = error.localizedDescription
@@ -190,7 +190,7 @@ final class Recorder: ObservableObject {
         systemInput = nil
         do {
             try await LoopbackDriver.uninstall()
-            status = "Driver rimosso."
+            status = "Driver removed."
         } catch {
             status = error.localizedDescription
         }
@@ -200,7 +200,7 @@ final class Recorder: ObservableObject {
         objectWillChange.send()
     }
 
-    // MARK: - Registrazione
+    // MARK: - Recording
 
     func toggle() {
         Task { isRecording ? await stop() : await start() }
@@ -223,7 +223,7 @@ final class Recorder: ObservableObject {
             let selected = selectedWindowID
             refreshSources()
             guard let window = windows.first(where: { $0.id == selected }) else {
-                status = "La finestra selezionata non esiste più: scegline un'altra."
+                status = "The selected window no longer exists: pick another one."
                 return
             }
             target = .window(window)
@@ -242,7 +242,7 @@ final class Recorder: ObservableObject {
         } catch {
             engine.cancel()
             await source.stop()
-            status = "Impossibile avviare: \(error.localizedDescription)"
+            status = "Couldn't start: \(error.localizedDescription)"
             return
         }
 
@@ -257,7 +257,7 @@ final class Recorder: ObservableObject {
                 self.elapsed = Date().timeIntervalSince(start)
             }
         }
-        status = "Registrazione in corso…"
+        status = "Recording…"
     }
 
     func stop() async {
@@ -266,7 +266,7 @@ final class Recorder: ObservableObject {
         clockTimer?.invalidate()
         clockTimer = nil
         startDate = nil
-        status = "Salvataggio…"
+        status = "Saving…"
 
         await videoSource?.stop()
         videoSource = nil
@@ -279,22 +279,22 @@ final class Recorder: ObservableObject {
         switch result {
         case .success(let url):
             lastFile = url
-            status = (interruption.map { "\($0) " } ?? "") + "Salvato: \(url.lastPathComponent)"
+            status = (interruption.map { "\($0) " } ?? "") + "Saved: \(url.lastPathComponent)"
         case .failure(let error) where error is CancellationError:
             break
         case .failure(let error):
-            status = "Registrazione non salvata: \(error.localizedDescription)"
+            status = "Recording not saved: \(error.localizedDescription)"
         }
         interruption = nil
     }
 
     private func videoFailed(_ error: Error) {
         guard isRecording else { return }
-        interruption = "Registrazione interrotta (\(error.localizedDescription))."
+        interruption = "Recording interrupted (\(error.localizedDescription))."
         Task { await stop() }
     }
 
-    /// Chiamato alla chiusura dell'app.
+    /// Called when the app quits.
     func shutdown() async {
         await stop()
         await systemInput?.stop()
@@ -312,7 +312,7 @@ final class Recorder: ObservableObject {
         return String(format: "%02d:%02d:%02d", total / 3600, total / 60 % 60, total % 60)
     }
 
-    // MARK: - Livelli
+    // MARK: - Levels
 
     private func updateLevels() {
         let system = Self.decayed(levels.system, peak: engine.systemLevel.take())
@@ -321,7 +321,7 @@ final class Recorder: ObservableObject {
         if mic != levels.mic { levels.mic = mic }
     }
 
-    /// Salita istantanea, discesa di ~45 dB/s.
+    /// Instant attack, ~45 dB/s release.
     private static func decayed(_ current: Float, peak: Float) -> Float {
         let db = peak > 0 ? max(Levels.floor, 20 * log10(peak)) : Levels.floor
         return max(db, current - 1.5, Levels.floor)
@@ -330,7 +330,7 @@ final class Recorder: ObservableObject {
     private static func makeOutputURL() -> URL {
         let dir = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd 'alle' HH.mm.ss"
+        formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
         return dir.appendingPathComponent("AudioMac \(formatter.string(from: Date())).mov")
     }
 }

@@ -175,10 +175,9 @@
 			};
 			buildConfigurationList = AA0000000000000000000600 /* Build configuration list for PBXProject "AudioMac" */;
 			compatibilityVersion = "Xcode 14.0";
-			developmentRegion = it;
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				it,
 				en,
 				Base,
 			);

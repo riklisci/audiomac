@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Solo API SwiftUI disponibili da macOS 11.
+// Only SwiftUI APIs available since macOS 11.
 
 struct ContentView: View {
     @EnvironmentObject private var recorder: Recorder
@@ -37,7 +37,7 @@ struct ContentView: View {
 
             switch recorder.mode {
             case .display:
-                Picker("Schermo:", selection: $recorder.selectedDisplayID) {
+                Picker("Display:", selection: $recorder.selectedDisplayID) {
                     ForEach(recorder.displays) { display in
                         Text("\(display.name) — \(display.pixelWidth)×\(display.pixelHeight)")
                             .tag(Optional(display.id))
@@ -45,7 +45,7 @@ struct ContentView: View {
                 }
             case .window:
                 HStack {
-                    Picker("Finestra:", selection: $recorder.selectedWindowID) {
+                    Picker("Window:", selection: $recorder.selectedWindowID) {
                         ForEach(recorder.windows) { window in
                             Text(window.label).tag(Optional(window.id))
                         }
@@ -55,7 +55,7 @@ struct ContentView: View {
                     } label: {
                         Image(systemName: "arrow.clockwise")
                     }
-                    .help("Aggiorna l'elenco delle finestre")
+                    .help("Refresh the window list")
                 }
             }
 
@@ -75,18 +75,18 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Audio").font(.headline)
 
-            ChannelStrip(title: "Audio del Mac",
+            ChannelStrip(title: "Mac Audio",
                          icon: "speaker.wave.2.fill", mutedIcon: "speaker.slash.fill",
                          level: \.system, muted: $recorder.systemMuted)
                 .disabled(recorder.systemAudio != .active)
             systemAudioNote
 
-            ChannelStrip(title: "Microfono",
+            ChannelStrip(title: "Microphone",
                          icon: "mic.fill", mutedIcon: "mic.slash.fill",
                          level: \.mic, muted: $recorder.micMuted)
                 .disabled(!recorder.micAvailable)
             if !recorder.micAvailable {
-                note("Accesso al microfono negato: Privacy e sicurezza → Microfono.")
+                note("Microphone access denied: Privacy & Security → Microphone.")
             }
         }
     }
@@ -96,19 +96,19 @@ struct ContentView: View {
         switch recorder.systemAudio {
         case .needsDriver:
             VStack(alignment: .leading, spacing: 6) {
-                note("Su questa versione di macOS l'audio interno si cattura con il driver AudioMac Loopback (serve la password di amministratore).")
-                Button("Installa driver audio…") {
+                note("On this version of macOS, internal audio is captured with the AudioMac Loopback driver (requires an administrator password).")
+                Button("Install Audio Driver…") {
                     Task { await recorder.installDriver() }
                 }
             }
         case .installing:
-            note("Installazione del driver in corso…")
+            note("Installing the driver…")
         case .failed(let message):
-            note("Audio del Mac non disponibile: \(message)")
+            note("Mac audio unavailable: \(message)")
         case .active where Recorder.usesDriverAudio:
             HStack {
-                note("Mentre AudioMac è aperta l'uscita audio passa da \"AudioMac (altoparlanti + registrazione)\": il volume da tastiera non è disponibile.")
-                Button("Disinstalla driver") {
+                note("While AudioMac is open, audio is routed through \"AudioMac (Speakers + Recording)\": the volume keys are unavailable.")
+                Button("Uninstall Driver") {
                     Task { await recorder.uninstallDriver() }
                 }
                 .disabled(recorder.isRecording)
@@ -128,7 +128,7 @@ struct ContentView: View {
     private var controls: some View {
         HStack {
             Button(action: recorder.toggle) {
-                Label(recorder.isRecording ? "Ferma" : "Registra",
+                Label(recorder.isRecording ? "Stop" : "Record",
                       systemImage: recorder.isRecording ? "stop.circle.fill" : "record.circle")
                     .foregroundColor(recorder.isRecording ? .red : nil)
                     .frame(minWidth: 110)
@@ -144,14 +144,14 @@ struct ContentView: View {
             }
             Spacer()
             if recorder.lastFile != nil, !recorder.isRecording {
-                Button("Mostra nel Finder", action: recorder.revealLastFile)
+                Button("Show in Finder", action: recorder.revealLastFile)
             }
         }
     }
 }
 
-/// Riga con pulsante muto e meter di livello. Il meter mostra sempre il segnale in ingresso,
-/// anche quando la sorgente è mutata (in quel caso viene attenuato e nel file finisce silenzio).
+/// Row with a mute button and a level meter. The meter always shows the incoming signal,
+/// even when the source is muted (then it's dimmed and silence goes into the file).
 struct ChannelStrip: View {
     @EnvironmentObject private var recorder: Recorder
     let title: String
@@ -170,7 +170,7 @@ struct ChannelStrip: View {
                     .frame(width: 20)
             }
             .buttonStyle(BorderlessButtonStyle())
-            .help(muted ? "Riattiva \(title)" : "Muta \(title)")
+            .help(muted ? "Unmute \(title)" : "Mute \(title)")
 
             Text(title)
                 .frame(width: 110, alignment: .leading)

@@ -1,142 +1,142 @@
 <p align="center">
-  <img src="icon/AppIcon-1024.png" width="160" alt="Icona di AudioMac">
+  <img src="icon/AppIcon-1024.png" width="160" alt="AudioMac icon">
 </p>
 
 <h1 align="center">AudioMac</h1>
 
 <p align="center">
-  Registra lo schermo del Mac <b>con l'audio interno</b> e il microfono.<br>
-  Quello che ⌘⇧5 non sa fare.
+  Record your Mac's screen <b>with internal audio</b> and your microphone.<br>
+  The thing ⌘⇧5 can't do.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/macOS-11%20Big%20Sur%2B-black?logo=apple" alt="macOS 11+">
   <img src="https://img.shields.io/badge/Swift-5-F05138?logo=swift&logoColor=white" alt="Swift 5">
   <img src="https://img.shields.io/badge/Intel%20%2B%20Apple%20Silicon-universal-555" alt="Universal">
-  <img src="https://img.shields.io/badge/licenza-Unlicense%20(pubblico%20dominio)-blue" alt="Unlicense">
+  <img src="https://img.shields.io/badge/license-Unlicense%20(public%20domain)-blue" alt="Unlicense">
 </p>
 
 ---
 
-## Perché
+## Why
 
-Lo strumento di registrazione integrato in macOS (⌘⇧5, QuickTime) registra lo schermo con il **microfono**, ma
-non con l'audio che il Mac sta riproducendo: video, call, musica, giochi. Per farlo di solito serve installare un
-driver audio virtuale e configurare a mano un dispositivo multi-uscita.
+macOS's built-in recorder (⌘⇧5, QuickTime) records the screen with your **microphone**, but not with the sound
+your Mac is playing: videos, calls, music, games. Getting that usually means installing a virtual audio driver and
+setting up a Multi-Output Device by hand.
 
-AudioMac lo fa da solo, con un'app minimale:
+AudioMac does it for you, in a minimal app:
 
-- 🖥️ **Schermo intero o singola finestra**
-- 🔊 **Audio del Mac** e 🎙️ **microfono**, su due tracce separate nello stesso file
-- 🔇 **Muto in tempo reale** per ciascuna sorgente, anche durante la registrazione, senza perdere la sincronia
-- 📊 **Livelli audio** di entrambi gli ingressi sempre visibili, anche prima di registrare
-- 🎞️ **H.264 o HEVC**, 30 o 60 fps, file `.mov` salvati in `~/Movies`
-- ⌨️ **⇧⌘R** per avviare/fermare
+- 🖥️ **Full screen or a single window**
+- 🔊 **Mac audio** and 🎙️ **microphone**, on two separate tracks in the same file
+- 🔇 **Live mute** for each source, even while recording, without losing sync
+- 📊 **Audio level meters** for both inputs, always visible, even before you start recording
+- 🎞️ **H.264 or HEVC**, 30 or 60 fps, `.mov` files saved to `~/Movies`
+- ⌨️ **⇧⌘R** to start/stop
 
-## Compatibilità
+## Compatibility
 
-AudioMac funziona da **macOS 11 Big Sur** in poi e sceglie da sola la tecnica migliore per il sistema su cui gira:
+AudioMac runs on **macOS 11 Big Sur** and later, and picks the best capture method for the system it's running on:
 
-| macOS | Video | Audio del Mac | Microfono |
+| macOS | Video | Mac audio | Microphone |
 |---|---|---|---|
-| **13 Ventura e successivi** | ScreenCaptureKit | ScreenCaptureKit, nessun driver | AVFoundation |
-| **12.3 – 12.x Monterey** | ScreenCaptureKit | driver AudioMac Loopback | AVFoundation |
-| **11 Big Sur – 12.2** | CGDisplayStream / istantanee della finestra | driver AudioMac Loopback | AVFoundation |
+| **13 Ventura and later** | ScreenCaptureKit | ScreenCaptureKit, no driver | AVFoundation |
+| **12.3 – 12.x Monterey** | ScreenCaptureKit | AudioMac Loopback driver | AVFoundation |
+| **11 Big Sur – 12.2** | CGDisplayStream / window snapshots | AudioMac Loopback driver | AVFoundation |
 
-Da macOS 13 non serve installare nulla. Prima, macOS non offre alcuna API per catturare l'audio di sistema: per
-questo AudioMac include un piccolo driver audio virtuale.
+From macOS 13 on there is nothing to install. Earlier versions of macOS have no API to capture system audio, so
+AudioMac ships with a small virtual audio driver.
 
-## Installazione
+## Installation
 
-1. Compila l'app (vedi sotto) oppure scarica una build.
-2. Apri **AudioMac** e concedi i permessi richiesti in *Impostazioni di Sistema → Privacy e sicurezza*:
-   - **Registrazione schermo** (su macOS 15: *Registrazione schermo e audio di sistema*)
-   - **Microfono**
-3. Riapri l'app dopo aver concesso il permesso di registrazione schermo.
+1. Build the app (see below) or download a build.
+2. Open **AudioMac** and grant the requested permissions in *System Settings → Privacy & Security*:
+   - **Screen Recording** (on macOS 15: *Screen & System Audio Recording*)
+   - **Microphone**
+3. Reopen the app after granting Screen Recording.
 
-> L'app è firmata ad-hoc: al primo avvio usa clic destro → **Apri**. Dopo ogni ricompilazione macOS potrebbe
-> chiedere di nuovo il permesso di registrazione schermo.
+> The app is ad-hoc signed: the first time, right-click it → **Open**. After every rebuild macOS may ask for the
+> Screen Recording permission again.
 
-### Su macOS 11 e 12: il driver AudioMac Loopback
+### On macOS 11 and 12: the AudioMac Loopback driver
 
-Nella sezione *Audio* compare il pulsante **Installa driver audio…**, che copia il driver in
-`/Library/Audio/Plug-Ins/HAL` (serve la password di amministratore) e riavvia il servizio audio.
+The *Audio* section shows an **Install Audio Driver…** button. It copies the driver to
+`/Library/Audio/Plug-Ins/HAL` (administrator password required) and restarts the audio service.
 
-Mentre AudioMac è aperta, l'uscita audio passa da un dispositivo multi-uscita
-**"AudioMac (altoparlanti + registrazione)"**: continui a sentire tutto normalmente e il driver riceve una copia
-dell'audio da registrare. Alla chiusura dell'app l'uscita torna quella di prima. Durante questo periodo i tasti del
-volume non sono disponibili: è un limite dei dispositivi multi-uscita di macOS.
+While AudioMac is open, sound is routed through a Multi-Output Device called
+**"AudioMac (Speakers + Recording)"**: you keep hearing everything as usual, and the driver receives a copy of the
+audio to record. When you quit the app, your previous output is restored. In the meantime the volume keys don't
+work: that's a limitation of macOS Multi-Output Devices.
 
-Il driver si rimuove dal pulsante **Disinstalla driver** nell'app, oppure a mano:
+Remove the driver with the **Uninstall Driver** button in the app, or by hand:
 
 ```bash
 sudo rm -rf /Library/Audio/Plug-Ins/HAL/AudioMacLoopback.driver && sudo killall coreaudiod
 ```
 
-## Compilazione
+## Building
 
-Serve Xcode (testato con Xcode 26). La build è universale (Intel + Apple Silicon) con target minimo macOS 11.
+Requires Xcode (tested with Xcode 26). The build is universal (Intel + Apple Silicon) with a macOS 11 deployment target.
 
 ```bash
 ./build.sh
 ```
 
-L'app viene creata in `build/Release/AudioMac.app`. In alternativa apri `AudioMac.xcodeproj` e premi ⌘R.
+The app ends up in `build/Release/AudioMac.app`. Alternatively, open `AudioMac.xcodeproj` and press ⌘R.
 
-Per provare su un Mac recente il percorso usato da Big Sur/Monterey (driver + API video precedenti):
+To try the Big Sur/Monterey code path (driver + older video APIs) on a recent Mac:
 
 ```bash
-defaults write com.rikdev.audiomac ForceLegacyCapture -bool YES   # attiva
-defaults delete com.rikdev.audiomac ForceLegacyCapture            # torna al normale
+defaults write com.rikdev.audiomac ForceLegacyCapture -bool YES   # enable
+defaults delete com.rikdev.audiomac ForceLegacyCapture            # back to normal
 ```
 
-## Come funziona
+## How it works
 
 ```
-            ┌────────────── Video ──────────────┐
- schermo ──►│ ScreenCaptureKit / CGDisplayStream │──┐
-            └────────────────────────────────────┘  │     ┌──────────────┐
-            ┌─────────── Audio del Mac ──────────┐  ├────►│ AVAssetWriter│──► .mov
- sistema ──►│ ScreenCaptureKit / driver loopback │──┤     │ 1 video      │    (H.264/HEVC,
-            └────────────────────────────────────┘  │     │ 2 audio AAC  │     2 tracce AAC)
-            ┌──────────── Microfono ─────────────┐  │     └──────────────┘
- micro ────►│ AVCaptureSession                   │──┘
+            ┌────────────── Video ───────────────┐
+ screen ───►│ ScreenCaptureKit / CGDisplayStream │──┐
+            └────────────────────────────────────┘  │     ┌───────────────┐
+            ┌──────────── Mac audio ─────────────┐  ├────►│ AVAssetWriter │──► .mov
+ system ───►│ ScreenCaptureKit / loopback driver │──┤     │ 1 video       │    (H.264/HEVC,
+            └────────────────────────────────────┘  │     │ 2 AAC audio   │     2 AAC tracks)
+            ┌──────────── Microphone ────────────┐  │     └───────────────┘
+ mic ──────►│ AVCaptureSession                   │──┘
             └────────────────────────────────────┘
 ```
 
-- Tutte le sorgenti consegnano i campioni su un'unica coda, con timestamp nel clock host, così video e tracce
-  audio restano sincronizzati.
-- Il **muto** sostituisce i campioni con silenzio invece di interrompere la traccia; anche i buchi dello stream
-  audio (es. nessun suono in riproduzione) vengono riempiti con silenzio.
-- In modalità *singola finestra* l'audio registrato è comunque quello di **tutto il Mac** (ScreenCaptureKit, di
-  suo, catturerebbe solo l'app proprietaria della finestra).
-- La finestra di AudioMac viene esclusa dal video nella modalità *schermo intero* (da macOS 12.3).
+- Every source delivers samples on a single queue, timestamped on the host clock, so video and audio tracks stay
+  in sync.
+- **Mute** replaces samples with silence instead of cutting the track; gaps in the audio stream (e.g. nothing is
+  playing) are filled with silence too.
+- In *single window* mode the recorded audio is still **the whole Mac's** (on its own, ScreenCaptureKit would only
+  capture the app that owns the window).
+- AudioMac's own window is excluded from the video in *full screen* mode (macOS 12.3+).
 
-## Struttura del progetto
+## Project structure
 
 ```
 AudioMac/                 App (SwiftUI, macOS 11+)
-├── AudioMacApp.swift     Entry point, comandi, chiusura ordinata
-├── ContentView.swift     Interfaccia: sorgente video, canali audio con meter e muto
-├── Recorder.swift        Stato dell'app e scelta della tecnica in base alla versione di macOS
-├── CaptureEngine.swift   Scrittura del file, livelli, muto, riempimento dei silenzi
-├── VideoSources.swift    ScreenCaptureKit, CGDisplayStream, istantanee finestra
-├── AudioSources.swift    Audio di sistema (ScreenCaptureKit / loopback) e microfono
-├── LoopbackDriver.swift  Installazione del driver e instradamento multi-uscita
-└── SourceCatalog.swift   Elenco di schermi e finestre
-AudioMacDriver/           Driver AudioServerPlugIn "AudioMac Loopback" (C)
-icon/                     Sorgente Affinity ed esportazioni dell'icona (l'app usa AudioMac/Assets.xcassets)
+├── AudioMacApp.swift     Entry point, commands, clean shutdown
+├── ContentView.swift     UI: video source, audio channels with meters and mute
+├── Recorder.swift        App state and capture method selection per macOS version
+├── CaptureEngine.swift   File writing, levels, mute, silence filling
+├── VideoSources.swift    ScreenCaptureKit, CGDisplayStream, window snapshots
+├── AudioSources.swift    System audio (ScreenCaptureKit / loopback) and microphone
+├── LoopbackDriver.swift  Driver installation and Multi-Output routing
+└── SourceCatalog.swift   Display and window lists
+AudioMacDriver/           "AudioMac Loopback" AudioServerPlugIn driver (C)
+icon/                     Icon source (Affinity) and exports (the app uses AudioMac/Assets.xcassets)
 ```
 
-## Limiti noti
+## Known limitations
 
-- Su macOS 11–12.2 in modalità *schermo intero* la finestra di AudioMac compare nel video, e la modalità
-  *singola finestra* usa istantanee periodiche (più CPU).
-- Il driver supporta 44,1 e 48 kHz: se l'uscita audio del Mac lavora a una frequenza diversa, il dispositivo
-  multi-uscita potrebbe non funzionare.
-- Audio del Mac e microfono sono su due tracce separate: QuickTime e i programmi di montaggio le leggono entrambe.
+- On macOS 11–12.2, in *full screen* mode AudioMac's window shows up in the video, and *single window* mode uses
+  periodic snapshots (more CPU).
+- The driver supports 44.1 and 48 kHz: if your Mac's audio output runs at a different sample rate, the
+  Multi-Output Device may not work.
+- Mac audio and microphone are on two separate tracks: QuickTime and video editors read both.
 
-## Licenza
+## License
 
-Pubblico dominio ([The Unlicense](LICENSE)): puoi usare, copiare, modificare, distribuire e vendere AudioMac,
-anche in progetti commerciali e chiusi, senza chiedere permesso e senza obbligo di citare la fonte.
+Public domain ([The Unlicense](LICENSE)): you may use, copy, modify, distribute and sell AudioMac, including in
+commercial and closed-source projects, without asking for permission and without having to credit anyone.

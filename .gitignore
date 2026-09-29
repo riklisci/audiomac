@@ -5,9 +5,9 @@
 build/
 DerivedData/
 
-# Xcode (dati per utente)
+# Xcode (per-user data)
 xcuserdata/
 *.xcuserstate
 
-# File di lock di Affinity
+# Affinity lock files
 *~lock~
