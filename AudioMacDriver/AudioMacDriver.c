@@ -47,6 +47,7 @@ static UInt32                   gOutputActive = 1;
 // Only accessed from the IO thread.
 static Float32 gRing[kRingFrames * kChannelCount];
 static Float64 gWrittenUntil = 0; // sample time (exclusive) up to which the output has written into the ring
+static Float64 gValidFrom = 0;    // start of the contiguous region of the ring that ends at gWrittenUntil
 
 static void UpdateHostTicksPerFrame(void) {
     mach_timebase_info_data_t timebase;
@@ -332,7 +333,8 @@ static OSStatus DeviceProperty(const AudioObjectPropertyAddress* inAddress, UInt
         WRITE_VALUE(UInt32, running);
     }
     case kAudioDevicePropertyDeviceCanBeDefaultDevice:
-        WRITE_VALUE(UInt32, 1);
+        // Output only: the loopback must never become the default microphone.
+        WRITE_VALUE(UInt32, inAddress->mScope != kAudioObjectPropertyScopeInput);
     case kAudioDevicePropertyDeviceCanBeDefaultSystemDevice:
         WRITE_VALUE(UInt32, 0);
     case kAudioDevicePropertyLatency:
@@ -531,6 +533,7 @@ static OSStatus StartIO(AudioServerPlugInDriverRef inDriver, AudioObjectID inDev
         gTimeStampCount = 0;
         gAnchorHostTime = mach_absolute_time();
         gWrittenUntil = 0;
+        gValidFrom = 0;
         memset(gRing, 0, sizeof(gRing));
     }
     gIOClients++;
@@ -595,13 +598,16 @@ static OSStatus DoIOOperation(AudioServerPlugInDriverRef inDriver, AudioObjectID
         if (first < inIOBufferFrameSize) {
             memcpy(gRing, source + first * kChannelCount, (inIOBufferFrameSize - first) * kBytesPerFrame);
         }
+        // A gap (or a jump back) means the ring holds stale data before this write: start a new region.
+        if (sampleTime != gWrittenUntil) gValidFrom = sampleTime;
         gWrittenUntil = sampleTime + inIOBufferFrameSize;
     } else if (inOperationID == kAudioServerPlugInIOOperationReadInput && inStreamObjectID == kObjectID_Stream_Input) {
         // Return what was played; silence where the ring has no valid data
-        // (nothing playing, or data older than one trip around the ring).
+        // (nothing playing, a gap in the writes, or data older than one trip around the ring).
         Float64 sampleTime = floor(inIOCycleInfo->mInputTime.mSampleTime);
         Float32* destination = ioMainBuffer;
         Float64 validStart = gWrittenUntil - kRingFrames;
+        if (validStart < gValidFrom) validStart = gValidFrom;
         Float64 validEnd = gWrittenUntil;
         for (UInt32 frame = 0; frame < inIOBufferFrameSize; frame++) {
             Float64 time = sampleTime + frame;

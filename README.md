@@ -54,8 +54,9 @@ AudioMac ships with a small virtual audio driver.
    - **Microphone**
 3. Reopen the app after granting Screen Recording.
 
-> The app is ad-hoc signed: the first time, right-click it → **Open**. After every rebuild macOS may ask for the
-> Screen Recording permission again.
+> Builds are signed with an Apple Development certificate when one is available (permissions then survive
+> rebuilds), otherwise ad-hoc: the first time, right-click the app → **Open**, and macOS asks for the permissions
+> again after every rebuild.
 
 ### On macOS 11 and 12: the AudioMac Loopback driver
 
@@ -64,8 +65,11 @@ The *Audio* section shows an **Install Audio Driver…** button. It copies the d
 
 While AudioMac is open, sound is routed through a Multi-Output Device called
 **"AudioMac (Speakers + Recording)"**: you keep hearing everything as usual, and the driver receives a copy of the
-audio to record. When you quit the app, your previous output is restored. In the meantime the volume keys don't
-work: that's a limitation of macOS Multi-Output Devices.
+audio to record. If you change the output meanwhile (headphones, AirPods, System Settings), the Multi-Output Device
+follows your choice and the recording keeps working. When you quit the app, your last chosen output is restored. In
+the meantime the volume keys don't work: that's a limitation of macOS Multi-Output Devices.
+
+The loopback device can't become the default microphone, and AudioMac never records from it as one.
 
 Remove the driver with the **Uninstall Driver** button in the app, or by hand:
 
@@ -106,6 +110,7 @@ defaults delete com.rikdev.audiomac ForceLegacyCapture            # back to norm
 
 - Every source delivers samples on a single queue, timestamped on the host clock, so video and audio tracks stay
   in sync.
+- The microphone is the system's default input device (change it in System Settings, or plug in a headset).
 - **Mute** replaces samples with silence instead of cutting the track; gaps in the audio stream (e.g. nothing is
   playing) are filled with silence too.
 - In *single window* mode the recorded audio is still **the whole Mac's** (on its own, ScreenCaptureKit would only

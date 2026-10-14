@@ -41,6 +41,10 @@ final class CaptureEngine: @unchecked Sendable {
     let systemMuted = AtomicBool(false)
     let micMuted = AtomicBool(false)
 
+    /// Called once per recording (on `queue`) when the writer fails mid-recording (disk full, encoder error).
+    /// Set it before `prepare`.
+    var onWriterFailure: ((Error) -> Void)?
+
     // Confined to `queue`.
     private var recording: Recording?
 
@@ -55,6 +59,7 @@ final class CaptureEngine: @unchecked Sendable {
         var systemNext = CMTime.invalid
         var micNext = CMTime.invalid
         var endTime = CMTime.invalid
+        var failureReported = false
 
         init(writer: AVAssetWriter, video: AVAssetWriterInput, adaptor: AVAssetWriterInputPixelBufferAdaptor,
              system: AVAssetWriterInput, mic: AVAssetWriterInput?) {
@@ -132,7 +137,7 @@ final class CaptureEngine: @unchecked Sendable {
             self.recording = nil
             let url = rec.writer.outputURL
 
-            guard rec.startTime != nil, rec.writer.status == .writing else {
+            guard rec.startTime != nil, rec.endTime.isNumeric, rec.writer.status == .writing else {
                 let error = rec.writer.error ?? CaptureError.noFrames
                 rec.writer.cancelWriting()
                 try? FileManager.default.removeItem(at: url)
@@ -167,9 +172,19 @@ final class CaptureEngine: @unchecked Sendable {
 
     // MARK: - Sample input (on `queue`)
 
+    /// Whether the writer can take samples; reports a failure to `onWriterFailure` (once).
+    private func isWriting(_ rec: Recording) -> Bool {
+        if rec.writer.status == .writing { return true }
+        if rec.writer.status == .failed, !rec.failureReported {
+            rec.failureReported = true
+            onWriterFailure?(rec.writer.error ?? CaptureError.writerSetup)
+        }
+        return false
+    }
+
     func appendVideo(_ pixelBuffer: CVPixelBuffer, at pts: CMTime) {
         dispatchPrecondition(condition: .onQueue(queue))
-        guard let rec = recording, rec.writer.status == .writing else { return }
+        guard let rec = recording, isWriting(rec) else { return }
 
         if rec.startTime == nil {
             rec.writer.startSession(atSourceTime: pts)
@@ -182,6 +197,8 @@ final class CaptureEngine: @unchecked Sendable {
         if rec.adaptor.append(pixelBuffer, withPresentationTime: pts) {
             rec.lastVideoTime = pts
             rec.extend(to: pts)
+        } else {
+            _ = isWriting(rec)
         }
     }
 
@@ -190,7 +207,7 @@ final class CaptureEngine: @unchecked Sendable {
         let isSystem = source == .system
         (isSystem ? systemLevel : micLevel).report(Self.peak(of: sampleBuffer))
 
-        guard let rec = recording, let start = rec.startTime, rec.writer.status == .writing,
+        guard let rec = recording, isWriting(rec), let start = rec.startTime,
               let input = isSystem ? rec.system : rec.mic,
               let format = CMSampleBufferGetFormatDescription(sampleBuffer),
               let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(format)?.pointee else { return }
@@ -210,7 +227,7 @@ final class CaptureEngine: @unchecked Sendable {
                 let chunk = min(remaining, Int(asbd.mSampleRate))
                 if input.isReadyForMoreMediaData,
                    let silence = Self.silentBuffer(format: format, frames: chunk, at: next) {
-                    input.append(silence)
+                    if !input.append(silence) { _ = isWriting(rec) }
                 }
                 next = next + CMTime(value: CMTimeValue(chunk), timescale: timescale)
                 remaining -= chunk
@@ -219,8 +236,8 @@ final class CaptureEngine: @unchecked Sendable {
 
         let muted = (isSystem ? systemMuted : micMuted).value
         let buffer = muted ? Self.silentBuffer(format: format, frames: frames, at: pts) : sampleBuffer
-        if let buffer, input.isReadyForMoreMediaData {
-            input.append(buffer)
+        if let buffer, input.isReadyForMoreMediaData, !input.append(buffer) {
+            _ = isWriting(rec)
         }
         next = pts + CMTime(value: CMTimeValue(frames), timescale: timescale)
         if isSystem { rec.systemNext = next } else { rec.micNext = next }

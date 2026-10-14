@@ -22,12 +22,17 @@ struct AudioMacApp: App {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var isTerminating = false
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
     }
 
     /// Properly closes the file being recorded and restores the audio output before quitting.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // Quit requested again (⌘Q twice) while saving: keep waiting for the first shutdown.
+        if isTerminating { return .terminateLater }
+        isTerminating = true
         Task { @MainActor in
             await Recorder.shared.shutdown()
             sender.reply(toApplicationShouldTerminate: true)

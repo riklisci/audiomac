@@ -167,12 +167,15 @@ private let createWindowImage: CreateWindowImage? = {
     return unsafeBitCast(symbol, to: CreateWindowImage.self)
 }()
 
-final class WindowSnapshotSource: VideoSource {
+final class WindowSnapshotSource: VideoSource, @unchecked Sendable {
     var onError: ((Error) -> Void)?
     private let window: WindowInfo
     private let fps: Int
-    private var timer: DispatchSourceTimer?
+    /// Snapshots are slow: they run on their own queue, not on the engine's (which also delivers the audio).
+    private let queue = DispatchQueue(label: "audiomac.window-snapshots", qos: .userInitiated)
     private var pool: CVPixelBufferPool?
+    // Confined to `queue`.
+    private var timer: DispatchSourceTimer?
     private var ticks = 0
 
     init(window: WindowInfo, fps: Int) {
@@ -185,22 +188,30 @@ final class WindowSnapshotSource: VideoSource {
         let size = CaptureTarget.window(window).videoSize
         pool = makePixelBufferPool(width: size.width, height: size.height)
 
-        let timer = DispatchSource.makeTimerSource(queue: engine.queue)
+        let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(deadline: .now(), repeating: 1.0 / Double(fps), leeway: .milliseconds(2))
         timer.setEventHandler { [weak self, weak engine] in
             guard let self, let engine else { return }
             self.captureFrame(into: engine, width: size.width, height: size.height)
         }
-        timer.resume()
         self.timer = timer
+        timer.resume()
     }
 
     func stop() async {
-        timer?.cancel()
-        timer = nil
+        // Async hop instead of sync: onError may be running on `queue` and call back into stop().
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            queue.async {
+                self.timer?.cancel()
+                self.timer = nil
+                continuation.resume()
+            }
+        }
     }
 
+    /// Runs on `queue`.
     private func captureFrame(into engine: CaptureEngine, width: Int, height: Int) {
+        dispatchPrecondition(condition: .onQueue(queue))
         ticks += 1
         // About once a second, check that the window still exists.
         if ticks % fps == 0, !SourceCatalog.windowExists(window.id) {
@@ -216,17 +227,21 @@ final class WindowSnapshotSource: VideoSource {
                 .takeRetainedValue(),
               let pool else { return }
 
+        // Timestamp of the snapshot, not of the (possibly delayed) delivery to the engine.
+        let timestamp = CMClockGetTime(CMClockGetHostTimeClock())
         var out: CVPixelBuffer?
         guard CVPixelBufferPoolCreatePixelBuffer(nil, pool, &out) == kCVReturnSuccess, let pixelBuffer = out else { return }
         CVPixelBufferLockBaseAddress(pixelBuffer, [])
-        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
 
         guard let context = CGContext(
             data: CVPixelBufferGetBaseAddress(pixelBuffer),
             width: width, height: height, bitsPerComponent: 8,
             bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
             space: CGColorSpace(name: CGColorSpace.sRGB)!,
-            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue) else { return }
+            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue) else {
+            CVPixelBufferUnlockBaseAddress(pixelBuffer, [])
+            return
+        }
 
         // Black background and aspect-fit image (the window can be resized).
         context.setFillColor(CGColor(gray: 0, alpha: 1))
@@ -238,7 +253,11 @@ final class WindowSnapshotSource: VideoSource {
                                        y: (CGFloat(height) - drawSize.height) / 2,
                                        width: drawSize.width, height: drawSize.height))
 
-        engine.appendVideo(pixelBuffer, at: CMClockGetTime(CMClockGetHostTimeClock()))
+        CVPixelBufferUnlockBaseAddress(pixelBuffer, [])
+
+        engine.queue.async { [weak engine] in
+            engine?.appendVideo(pixelBuffer, at: timestamp)
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import CoreAudio
 
 enum VideoCodec: String, CaseIterable, Identifiable {
     case h264 = "H.264"
@@ -80,6 +81,7 @@ final class Recorder: ObservableObject {
     private let engine = CaptureEngine()
     private var systemInput: AudioInput?
     private var micInput: AudioInput?
+    private var micDeviceUID: String?
     private var videoSource: VideoSource?
     private var interruption: String?
     private var didSetup = false
@@ -87,6 +89,14 @@ final class Recorder: ObservableObject {
     private var clockTimer: Timer?
     private var startDate: Date?
     private var activationObserver: NSObjectProtocol?
+    private var screenObserver: NSObjectProtocol?
+    private var inputListener: AudioObjectPropertyListenerBlock?
+    /// In-flight start/stop, so `shutdown()` can wait for it.
+    private var operation: Task<Void, Never>?
+    private var isShuttingDown = false
+    // Bumped on every (re)start of an input: a call that finds a newer generation after an `await` lost the race.
+    private var micGeneration = 0
+    private var systemGeneration = 0
 
     private static let permissionMessage = "Permission missing: System Settings/Preferences → Privacy & Security → Screen Recording. Enable AudioMac, then come back to this window (reopen the app if Mac audio still doesn't start)."
 
@@ -106,6 +116,7 @@ final class Recorder: ObservableObject {
         refreshSources()
         await startMicrophone()
         await startSystemAudio()
+        installInputListener()
 
         meterTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.updateLevels() }
@@ -119,6 +130,12 @@ final class Recorder: ObservableObject {
                 guard let self, case .failed = self.systemAudio else { return }
                 await self.startSystemAudio()
             }
+        }
+
+        // Displays connected/disconnected or resolution changed.
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.refreshSources() }
         }
     }
 
@@ -136,9 +153,13 @@ final class Recorder: ObservableObject {
     // MARK: - Audio sources
 
     private func startMicrophone() async {
-        await micInput?.stop()
+        micGeneration += 1
+        let generation = micGeneration
+        let previous = micInput
         micInput = nil
-        guard micAvailable, let device = AVCaptureDevice.default(for: .audio) else { return }
+        await previous?.stop()
+        guard generation == micGeneration, !isShuttingDown, micAvailable,
+              let device = MicrophoneSelection.device() else { return }
 
         let input = DeviceAudioInput(device: device, channels: 1, source: .microphone, engine: engine)
         input.onError = { [weak self] error in
@@ -146,15 +167,53 @@ final class Recorder: ObservableObject {
         }
         do {
             try await input.start()
-            micInput = input
+            if generation == micGeneration {
+                micInput = input
+                micDeviceUID = device.uniqueID
+            } else {
+                await input.stop()
+            }
         } catch {
-            status = "Microphone unavailable: \(error.localizedDescription)"
+            if generation == micGeneration { status = "Microphone unavailable: \(error.localizedDescription)" }
+        }
+    }
+
+    /// Follows the system default input device (System Settings, headset plugged in, active mic unplugged).
+    private func installInputListener() {
+        guard inputListener == nil else { return }
+        var address = MicrophoneSelection.defaultInputAddress
+        let listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+            Task { @MainActor in
+                // Restart only if the device we'd pick changed: a restart leaves a short gap in a recording.
+                guard let self, self.micInput == nil || MicrophoneSelection.device()?.uniqueID != self.micDeviceUID
+                else { return }
+                await self.startMicrophone()
+            }
+        }
+        guard AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, .main, listener) == noErr
+        else { return }
+        inputListener = listener
+    }
+
+    private func removeObservers() {
+        if let activationObserver { NotificationCenter.default.removeObserver(activationObserver) }
+        if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
+        activationObserver = nil
+        screenObserver = nil
+        if let listener = inputListener {
+            var address = MicrophoneSelection.defaultInputAddress
+            AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, .main, listener)
+            inputListener = nil
         }
     }
 
     private func startSystemAudio() async {
-        await systemInput?.stop()
+        systemGeneration += 1
+        let generation = systemGeneration
+        let previous = systemInput
         systemInput = nil
+        await previous?.stop()
+        guard generation == systemGeneration, !isShuttingDown else { return }
 
         let input: AudioInput
         if !Self.usesDriverAudio, #available(macOS 13.0, *) {
@@ -173,12 +232,18 @@ final class Recorder: ObservableObject {
         systemAudio = .starting
         do {
             try await input.start()
+            guard generation == systemGeneration else {
+                await input.stop()
+                return
+            }
             systemInput = input
             systemAudio = .active
             if status == Self.permissionMessage { status = "Ready" }
         } catch {
+            guard generation == systemGeneration else { return }
             systemAudio = .failed(error.localizedDescription)
-            if !Self.usesDriverAudio { status = Self.permissionMessage }
+            // Other errors are already shown under the Mac Audio meter.
+            if !Self.usesDriverAudio, !CGPreflightScreenCaptureAccess() { status = Self.permissionMessage }
         }
     }
 
@@ -199,8 +264,10 @@ final class Recorder: ObservableObject {
 
     func uninstallDriver() async {
         guard !isRecording else { return }
-        await systemInput?.stop()
+        systemGeneration += 1 // also cancels a start still in flight
+        let previous = systemInput
         systemInput = nil
+        await previous?.stop()
         do {
             try await LoopbackDriver.uninstall()
             status = "Driver removed."
@@ -220,15 +287,41 @@ final class Recorder: ObservableObject {
     }
 
     func start() async {
-        guard !isRecording, !isBusy else { return }
-        isBusy = true
-        defer { isBusy = false }
+        guard !isRecording, !isBusy, !isShuttingDown else { return }
+        await runExclusive { await self.performStart() }
+    }
 
+    func stop() async {
+        guard isRecording, !isBusy else { return }
+        await runExclusive { await self.performStop() }
+    }
+
+    /// Runs a start/stop as a tracked task (`isBusy` while it runs) so `shutdown()` can wait for it.
+    private func runExclusive(_ body: @escaping @MainActor () async -> Void) async {
+        isBusy = true
+        let task = Task { @MainActor in
+            await body()
+            self.isBusy = false
+            self.operation = nil
+        }
+        operation = task
+        await task.value
+    }
+
+    private func performStart() async {
         let target: CaptureTarget
         switch mode {
         case .display:
-            guard let display = displays.first(where: { $0.id == selectedDisplayID }) ?? displays.first else {
+            // Re-read the displays: the list may be stale (resolution or arrangement changed).
+            let selected = selectedDisplayID
+            refreshSources()
+            guard !displays.isEmpty else {
                 status = CaptureError.noDisplay.localizedDescription
+                return
+            }
+            let display = selected == nil ? displays.first : displays.first { $0.id == selected }
+            guard let display else {
+                status = "The selected display is no longer available: pick another one."
                 return
             }
             target = .display(display)
@@ -251,7 +344,10 @@ final class Recorder: ObservableObject {
         let size = target.videoSize
         let source = makeVideoSource(target: target, fps: fps, legacy: Self.usesLegacyVideo)
         source.onError = { [weak self] error in
-            Task { @MainActor in self?.videoFailed(error) }
+            Task { @MainActor in self?.interrupt(error) }
+        }
+        engine.onWriterFailure = { [weak self] error in
+            Task { @MainActor in self?.interrupt(error) }
         }
 
         do {
@@ -279,9 +375,7 @@ final class Recorder: ObservableObject {
         status = "Recording…"
     }
 
-    func stop() async {
-        guard isRecording, !isBusy else { return }
-        isBusy = true
+    private func performStop() async {
         clockTimer?.invalidate()
         clockTimer = nil
         startDate = nil
@@ -294,7 +388,6 @@ final class Recorder: ObservableObject {
         }
 
         isRecording = false
-        isBusy = false
         switch result {
         case .success(let url):
             lastFile = url
@@ -307,15 +400,23 @@ final class Recorder: ObservableObject {
         interruption = nil
     }
 
-    private func videoFailed(_ error: Error) {
+    /// The video source or the file writer failed mid-recording: stop and save what we have (if possible).
+    private func interrupt(_ error: Error) {
         guard isRecording else { return }
         interruption = "Recording interrupted (\(error.localizedDescription))."
         Task { await stop() }
     }
 
-    /// Called when the app quits.
+    /// Called when the app quits: waits for an in-flight start/stop and finalizes the recording.
     func shutdown() async {
-        await stop()
+        isShuttingDown = true
+        micGeneration += 1 // cancels inputs still starting
+        systemGeneration += 1
+        removeObservers()
+        repeat {
+            while let operation { await operation.value }
+            await stop()
+        } while isRecording || operation != nil
         await systemInput?.stop()
         await micInput?.stop()
         OutputRouter.shared.restore()
@@ -373,7 +474,41 @@ final class Recorder: ObservableObject {
 
     private func makeOutputURL() -> URL {
         let formatter = DateFormatter()
+        // Fixed Gregorian/Latin format, whatever the user's locale or calendar.
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
         formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
         return outputFolder.appendingPathComponent("AudioMac \(formatter.string(from: Date())).mov")
+    }
+}
+
+/// Picks the microphone: the system default input, but never the AudioMac Loopback driver
+/// (it can become the default input on Macs without a built-in mic and would record the Mac audio).
+private enum MicrophoneSelection {
+    static let defaultInputAddress = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwarePropertyDefaultInputDevice,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: 0) // kAudioObjectPropertyElementMain, only available under that name since macOS 12
+
+    static func device() -> AVCaptureDevice? {
+        // A CoreAudio device UID equals the AVCaptureDevice uniqueID.
+        if let uid = defaultInputUID() {
+            if uid != LoopbackDriver.deviceUID, let device = AVCaptureDevice(uniqueID: uid) { return device }
+        } else if let device = AVCaptureDevice.default(for: .audio), device.uniqueID != LoopbackDriver.deviceUID {
+            return device
+        }
+        // The default is the loopback (or unusable): any other audio input.
+        let session = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInMicrophone, .externalUnknown],
+                                                       mediaType: .audio, position: .unspecified)
+        return session.devices.first { $0.uniqueID != LoopbackDriver.deviceUID }
+    }
+
+    private static func defaultInputUID() -> String? {
+        var address = defaultInputAddress
+        var device = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device) == noErr,
+              device != kAudioObjectUnknown else { return nil }
+        return CoreAudioDevices.uid(of: device)
     }
 }

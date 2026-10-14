@@ -47,6 +47,19 @@ enum CoreAudioDevices {
                                        UInt32(MemoryLayout<AudioDeviceID>.size), &device)
         }
     }
+
+    /// Calls `block` (on `queue`) whenever the default output device changes.
+    @discardableResult
+    static func addDefaultOutputListener(queue: DispatchQueue, block: @escaping AudioObjectPropertyListenerBlock) -> Bool {
+        var address = address(kAudioHardwarePropertyDefaultOutputDevice)
+        return AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue, block) == noErr
+    }
+
+    /// `block` must be the same object passed to `addDefaultOutputListener`.
+    static func removeDefaultOutputListener(queue: DispatchQueue, block: @escaping AudioObjectPropertyListenerBlock) {
+        var address = address(kAudioHardwarePropertyDefaultOutputDevice)
+        AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue, block)
+    }
 }
 
 /// The AudioMac Loopback driver bundled with the app (only used on macOS 11–12).
@@ -119,26 +132,102 @@ enum LoopbackDriver {
 
 /// While AudioMac is open (macOS 11–12 only), the default output becomes a Multi-Output Device
 /// "speakers + AudioMac Loopback": you keep hearing the audio and the loopback receives it for recording.
-/// Everything is restored when the app quits.
+/// If the user picks another output meanwhile (headphones, AirPods...), the Multi-Output Device is rebuilt
+/// around it. Everything is restored when the app quits.
 final class OutputRouter {
     static let shared = OutputRouter()
 
     private static let aggregateUID = "com.rikdev.audiomac.multioutput"
     private static let previousOutputKey = "PreviousOutputUID"
     private let lock = NSLock()
+    private let listenerQueue = DispatchQueue(label: "audiomac.output-router")
+    // Everything below is protected by `lock`.
+    private var routing = false
     private var aggregateID: AudioObjectID?
     private var previousOutput: AudioDeviceID?
+    private var listener: AudioObjectPropertyListenerBlock?
 
     func route() throws {
         lock.lock()
         defer { lock.unlock() }
-        guard aggregateID == nil else { return }
+        guard !routing else { return }
         removeLeftover()
 
         guard let loopback = LoopbackDriver.deviceID,
               let current = CoreAudioDevices.defaultOutput else { throw CaptureError.noAudioDevice }
         // If the output already is the loopback, audio reaches the driver anyway (but not the speakers).
-        guard current != loopback, let speakerUID = CoreAudioDevices.uid(of: current) else { return }
+        if current != loopback {
+            guard rebuildAggregate(around: current) else {
+                previousOutput = nil
+                UserDefaults.standard.removeObject(forKey: Self.previousOutputKey)
+                throw CaptureError.noAudioDevice
+            }
+        }
+
+        let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in self?.defaultOutputChanged(retries: 2) }
+        listener = block
+        routing = true
+        CoreAudioDevices.addDefaultOutputListener(queue: listenerQueue, block: block)
+    }
+
+    func restore() {
+        lock.lock()
+        guard routing else {
+            lock.unlock()
+            return
+        }
+        routing = false
+        let block = listener
+        listener = nil
+        if let aggregate = aggregateID {
+            if let previousOutput, CoreAudioDevices.defaultOutput == aggregate {
+                CoreAudioDevices.defaultOutput = previousOutput
+            }
+            destroyAggregate()
+        }
+        previousOutput = nil
+        UserDefaults.standard.removeObject(forKey: Self.previousOutputKey)
+        lock.unlock()
+        // Outside the lock: a notification being delivered right now waits for it. It then sees `routing == false`.
+        if let block { CoreAudioDevices.removeDefaultOutputListener(queue: listenerQueue, block: block) }
+    }
+
+    /// Removes a Multi-Output Device left over from a run that didn't quit cleanly.
+    func cleanupLeftovers() {
+        lock.lock()
+        defer { lock.unlock() }
+        removeLeftover()
+    }
+
+    /// Runs on `listenerQueue` when the default output changes. The loopback capture itself doesn't need to
+    /// restart: the loopback device is the same, it just receives audio from a new Multi-Output Device.
+    private func defaultOutputChanged(retries: Int) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard routing, let loopback = LoopbackDriver.deviceID, let current = CoreAudioDevices.defaultOutput else { return }
+        // Our own change (or nothing to do).
+        if current == aggregateID { return }
+        if current == loopback {
+            // The user chose the loopback itself: audio reaches it anyway, the Multi-Output Device isn't needed.
+            destroyAggregate()
+            UserDefaults.standard.removeObject(forKey: Self.previousOutputKey)
+            return
+        }
+        if !rebuildAggregate(around: current), retries > 0 {
+            // The new device may not be ready yet (e.g. Bluetooth just connected).
+            listenerQueue.asyncAfter(deadline: .now() + 1) { [weak self] in self?.defaultOutputChanged(retries: retries - 1) }
+        }
+    }
+
+    /// Creates the Multi-Output Device with `device` as main sub-device and makes it the default output,
+    /// replacing the previous one. `device` is what the user chose, so it's what we restore at the end.
+    /// Must be called with `lock` held.
+    private func rebuildAggregate(around device: AudioDeviceID) -> Bool {
+        guard let speakerUID = CoreAudioDevices.uid(of: device) else { return false }
+        previousOutput = device
+        UserDefaults.standard.set(speakerUID, forKey: Self.previousOutputKey)
+        // The UID must be free: the old one is not the default output at this point, it's safe to remove.
+        destroyAggregate()
 
         let description: [String: Any] = [
             kAudioAggregateDeviceUIDKey: Self.aggregateUID,
@@ -152,37 +241,21 @@ final class OutputRouter {
             ],
         ]
         var aggregate = AudioObjectID(0)
-        let status = AudioHardwareCreateAggregateDevice(description as CFDictionary, &aggregate)
-        guard status == noErr else { throw CaptureError.noAudioDevice }
-
-        UserDefaults.standard.set(speakerUID, forKey: Self.previousOutputKey)
-        CoreAudioDevices.defaultOutput = aggregate
+        guard AudioHardwareCreateAggregateDevice(description as CFDictionary, &aggregate) == noErr else { return false }
         aggregateID = aggregate
-        previousOutput = current
+        CoreAudioDevices.defaultOutput = aggregate
+        return true
     }
 
-    func restore() {
-        lock.lock()
-        defer { lock.unlock() }
+    /// Must be called with `lock` held.
+    private func destroyAggregate() {
         guard let aggregate = aggregateID else { return }
-        if let previousOutput, CoreAudioDevices.defaultOutput == aggregate {
-            CoreAudioDevices.defaultOutput = previousOutput
-        }
-        AudioHardwareDestroyAggregateDevice(aggregate)
         aggregateID = nil
-        previousOutput = nil
-        UserDefaults.standard.removeObject(forKey: Self.previousOutputKey)
-    }
-
-    /// Removes a Multi-Output Device left over from a run that didn't quit cleanly.
-    func cleanupLeftovers() {
-        lock.lock()
-        defer { lock.unlock() }
-        removeLeftover()
+        AudioHardwareDestroyAggregateDevice(aggregate)
     }
 
     private func removeLeftover() {
-        guard aggregateID == nil, let leftover = CoreAudioDevices.device(withUID: Self.aggregateUID) else { return }
+        guard !routing, let leftover = CoreAudioDevices.device(withUID: Self.aggregateUID) else { return }
         if CoreAudioDevices.defaultOutput == leftover,
            let uid = UserDefaults.standard.string(forKey: Self.previousOutputKey),
            let previous = CoreAudioDevices.device(withUID: uid) {
